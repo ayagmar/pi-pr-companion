@@ -10,10 +10,19 @@
   ],
   "type": "module",
   "main": "./src/index.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ayagmar/pi-pr-companion.git"
+  },
+  "homepage": "https://github.com/ayagmar/pi-pr-companion",
+  "bugs": {
+    "url": "https://github.com/ayagmar/pi-pr-companion/issues"
+  },
   "files": [
     "src/",
     "prompts/",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "lint": "eslint . --max-warnings=0",
