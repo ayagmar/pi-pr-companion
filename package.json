@@ -23,7 +23,12 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "smoke-test": "node --import=tsx ./scripts/smoke-test.mjs",
     "test": "node --import=tsx --test ./test/*.test.ts",
-    "check": "tsc --noEmit -p tsconfig.json && node --import=tsx ./scripts/smoke-test.mjs && node --import=tsx --test ./test/*.test.ts && eslint . --max-warnings=0 && prettier --check ."
+    "check": "tsc --noEmit -p tsconfig.json && node --import=tsx ./scripts/smoke-test.mjs && node --import=tsx --test ./test/*.test.ts && eslint . --max-warnings=0 && prettier --check .",
+    "release": "release-it",
+    "release:patch": "release-it patch",
+    "release:minor": "release-it minor",
+    "release:major": "release-it major",
+    "release:first": "release-it --first-release"
   },
   "pi": {
     "extensions": [
@@ -40,12 +45,14 @@
   "devDependencies": {
     "@mariozechner/pi-coding-agent": "^0.62.0",
     "@mariozechner/pi-tui": "^0.62.0",
+    "@release-it/conventional-changelog": "^10.0.6",
     "@types/node": "^22.19.10",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.8.1",
+    "release-it": "^19.2.4",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },

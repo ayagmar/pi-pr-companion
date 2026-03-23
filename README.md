@@ -312,3 +312,17 @@ or:
 ```bash
 pnpm check
 ```
+
+## Release
+
+Local release commands:
+
+```bash
+pnpm run release:patch
+pnpm run release:minor
+pnpm run release:major
+```
+
+GitHub Actions also includes a manual `Release` workflow.
+
+For npm publishing, set `NPM_TOKEN` in the repository secrets.
