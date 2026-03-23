@@ -1,22 +1,21 @@
 {
-  "name": "my-pi-extension",
+  "name": "pi-pr-companion",
   "version": "0.1.0",
-  "description": "Starter template for building robust Pi extensions",
+  "description": "Pi package for PR status, review sessions, and branch switching",
   "keywords": [
     "pi-package",
     "pi-extension",
-    "template"
+    "pr",
+    "review"
   ],
   "type": "module",
   "main": "./src/index.ts",
   "files": [
     "src/",
-    "starters/",
-    "scripts/",
+    "prompts/",
     "README.md"
   ],
   "scripts": {
-    "setup-template": "node ./scripts/setup.mjs",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -30,19 +29,17 @@
     "extensions": [
       "./src/index.ts"
     ],
-    "image": "https://placehold.co/1200x630/png?text=My+Pi+Extension"
+    "prompts": [
+      "./prompts"
+    ]
   },
   "peerDependencies": {
-    "@mariozechner/pi-ai": "*",
     "@mariozechner/pi-coding-agent": "*",
-    "@mariozechner/pi-tui": "*",
-    "@sinclair/typebox": "*"
+    "@mariozechner/pi-tui": "*"
   },
   "devDependencies": {
-    "@mariozechner/pi-ai": "^0.52.8",
-    "@mariozechner/pi-coding-agent": "^0.52.8",
-    "@mariozechner/pi-tui": "^0.52.8",
-    "@sinclair/typebox": "^0.34.48",
+    "@mariozechner/pi-coding-agent": "^0.62.0",
+    "@mariozechner/pi-tui": "^0.62.0",
     "@types/node": "^22.19.10",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
