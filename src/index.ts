@@ -5,8 +5,8 @@ import {
   type ExtensionAPI,
   type ExtensionCommandContext,
   type ExtensionContext,
-} from "@mariozechner/pi-coding-agent";
-import { Container, SelectList, Text, type SelectItem } from "@mariozechner/pi-tui";
+} from "@earendil-works/pi-coding-agent";
+import { Container, SelectList, Text, type SelectItem } from "@earendil-works/pi-tui";
 import { formatBranchSwitchSuccessMessage } from "./branch-switch.js";
 import { buildArgumentCompletions, buildHelpText, parseSubcommand } from "./commands.js";
 import { evaluatePrReadiness } from "./pr-readiness.js";
@@ -114,9 +114,7 @@ export default function prCompanionExtension(pi: ExtensionAPI) {
   };
 
   pi.on("session_start", async (_event, ctx) => refreshStatus(ctx, { force: true }));
-  pi.on("session_switch", async (_event, ctx) => refreshStatus(ctx, { force: true }));
   pi.on("session_tree", async (_event, ctx) => refreshStatus(ctx, { force: true }));
-  pi.on("session_fork", async (_event, ctx) => refreshStatus(ctx, { force: true }));
   pi.on("agent_end", async (_event, ctx) => refreshStatus(ctx));
 
   registerTools(pi);

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import prCompanionExtension from "../src/index.js";
 import { COMMAND_NAME } from "../src/constants.js";
 
@@ -38,13 +38,7 @@ void test("extension registers pr command, tools, and lifecycle refresh hooks", 
     captured.tools.map((tool) => tool.name),
     ["get_pr_context", "list_repo_prs", "switch_pr_branch"]
   );
-  assert.deepEqual(captured.eventNames, [
-    "session_start",
-    "session_switch",
-    "session_tree",
-    "session_fork",
-    "agent_end",
-  ]);
+  assert.deepEqual(captured.eventNames, ["session_start", "session_tree", "agent_end"]);
   for (const tool of captured.tools) {
     assert.ok(tool.promptSnippet, `${tool.name} should expose a promptSnippet for Pi >=0.59`);
   }

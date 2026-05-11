@@ -19,7 +19,7 @@ import { formatPickerEntry, formatUpdatedAge } from "../src/pr-display.js";
 import { getGitHubPrSeverity } from "../src/providers/github.js";
 import { getGitLabPrSeverity } from "../src/providers/gitlab.js";
 import { formatStatusText } from "../src/pr-state.js";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 void test("defaultConfig uses generic provider settings", () => {
   const config = defaultConfig();

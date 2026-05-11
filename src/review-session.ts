@@ -3,8 +3,8 @@ import {
   REVIEW_SESSION_STATE_TYPE,
   REVIEW_WIDGET_KEY,
 } from "./constants.js";
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { truncateToWidth } from "@mariozechner/pi-tui";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { truncateToWidth } from "@earendil-works/pi-tui";
 import type { ReviewSessionState } from "./types.js";
 
 export function getReviewSessionState(ctx: ExtensionContext): ReviewSessionState | undefined {
