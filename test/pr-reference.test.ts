@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { parsePrReference } from "../src/pr-reference.js";
 import { githubAdapter } from "../src/providers/github.js";
 import { gitlabAdapter } from "../src/providers/gitlab.js";

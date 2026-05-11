@@ -1,4 +1,4 @@
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isIgnoredBranch, loadConfig } from "./config.js";
 import { getDiffStats, resolveRepoContext } from "./git.js";
 import { evaluatePrReadiness } from "./pr-readiness.js";
