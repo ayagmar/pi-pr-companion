@@ -91,24 +91,42 @@ const SWITCH_PR_SCHEMA = Type.Object({
 });
 
 export default function prCompanionExtension(pi: ExtensionAPI) {
+  // Bumped on session_shutdown so refreshes still in flight from a replaced or
+  // reloaded session never touch its stale ctx.
+  let sessionGeneration = 0;
+
   const refreshStatus = async (
     ctx: ExtensionContext,
     options?: { force?: boolean }
   ): Promise<void> => {
-    applyReviewSessionState(ctx);
-    if (!ctx.hasUI) return;
-
+    const generation = sessionGeneration;
     try {
+      applyReviewSessionState(ctx);
+      if (!ctx.hasUI) return;
+
       const snapshot = await getRepoStatusSnapshot(pi, ctx.cwd, options);
+      if (generation !== sessionGeneration) return;
       applyStatusLine(ctx, snapshot);
     } catch (error) {
+      if (generation !== sessionGeneration || ctx.mode === "tui") return;
       console.error("[pi-pr-companion] Failed to refresh status", error);
     }
   };
 
-  pi.on("session_start", async (_event, ctx) => refreshStatus(ctx, { force: true }));
-  pi.on("session_tree", async (_event, ctx) => refreshStatus(ctx, { force: true }));
-  pi.on("agent_end", async (_event, ctx) => refreshStatus(ctx));
+  // Footer refreshes call gh/glab over the network, so they run in the
+  // background instead of holding up startup, reload, and tree navigation.
+  pi.on("session_start", (_event, ctx) => {
+    void refreshStatus(ctx, { force: true });
+  });
+  pi.on("session_tree", (_event, ctx) => {
+    void refreshStatus(ctx, { force: true });
+  });
+  pi.on("agent_settled", (_event, ctx) => {
+    void refreshStatus(ctx);
+  });
+  pi.on("session_shutdown", () => {
+    sessionGeneration += 1;
+  });
 
   registerTools(pi);
 
