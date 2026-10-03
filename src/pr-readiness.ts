@@ -63,7 +63,7 @@ export function evaluatePrReadiness(pr: PrSummary | PrDetails): PrReadiness {
   };
 }
 
-export function summarizeCheckStatus(status: string | undefined): PrCheckStatus {
+function summarizeCheckStatus(status: string | undefined): PrCheckStatus {
   const normalized = status?.trim().toLowerCase();
   if (!normalized) return "none";
 

@@ -645,7 +645,7 @@ async function handleActive(pi: ExtensionAPI, ctx: ExtensionCommandContext): Pro
     const { snapshot, prs, lookupError } = await runWithLoader(ctx, "Loading active PRs...", () =>
       listActivePrsForCurrentRepo(pi, ctx.cwd)
     );
-    const guardMessage = getActionGuardMessage(snapshot, lookupError, "active");
+    const guardMessage = getActionGuardMessage(snapshot, lookupError);
     if (guardMessage) {
       notify(ctx, guardMessage);
       return;
@@ -682,7 +682,7 @@ async function handleDashboard(pi: ExtensionAPI, ctx: ExtensionCommandContext): 
     const { snapshot, prs, lookupError } = await runWithLoader(ctx, "Loading PR dashboard...", () =>
       listActivePrsForCurrentRepo(pi, ctx.cwd)
     );
-    const guardMessage = getActionGuardMessage(snapshot, lookupError, "active");
+    const guardMessage = getActionGuardMessage(snapshot, lookupError);
     if (guardMessage) {
       notify(ctx, guardMessage);
       return;
@@ -1613,8 +1613,7 @@ function buildConfigSummary(config: PrCompanionConfig): string {
 
 function getActionGuardMessage(
   snapshot: RepoStatusSnapshot,
-  result: PrLookupResult | undefined,
-  action: "review" | "active"
+  result: PrLookupResult | undefined
 ): string | undefined {
   if (!snapshot.repo) {
     return "Current directory is not inside a git repository";
@@ -1625,7 +1624,7 @@ function getActionGuardMessage(
   }
 
   if (snapshot.reason === "ignored-branch") {
-    return `Branch is ignored for PR status/${action}: ${snapshot.repo.branch}`;
+    return `Branch is ignored for PR status/active: ${snapshot.repo.branch}`;
   }
 
   if (!result) return undefined;
