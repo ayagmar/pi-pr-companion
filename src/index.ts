@@ -45,10 +45,7 @@ import {
   getRepoStatusSnapshot,
   listActivePrsForCurrentRepo,
 } from "./pr-state.js";
-import {
-  findProjectReviewGuidelinesPath,
-  loadProjectReviewGuidelines,
-} from "./review-guidelines.js";
+import { findProjectReviewGuidelines } from "./review-guidelines.js";
 import {
   applyReviewSessionState,
   endReviewSession,
@@ -1741,10 +1738,7 @@ function requireActivePrResult(resolved: ResolvedPrContext): PrLookupResult {
 async function buildToolPrContextPayload(cwd: string, resolved: ResolvedPrContext) {
   const config = resolved.config;
   const guidelinesCwd = getLocalReviewGuidelinesCwd(resolved);
-  const guidelinesPath = guidelinesCwd
-    ? await findProjectReviewGuidelinesPath(guidelinesCwd)
-    : undefined;
-  const guidelines = guidelinesCwd ? await loadProjectReviewGuidelines(guidelinesCwd) : undefined;
+  const guidelines = guidelinesCwd ? await findProjectReviewGuidelines(guidelinesCwd) : undefined;
 
   return {
     cwd,
@@ -1756,8 +1750,8 @@ async function buildToolPrContextPayload(cwd: string, resolved: ResolvedPrContex
     error: getResolvedPrErrorMessage(resolved),
     sharedReviewInstructions: config.sharedReviewInstructions || undefined,
     reviewSessionMode: config.reviewSessionMode,
-    projectReviewGuidelinesPath: guidelinesPath,
-    projectReviewGuidelines: guidelines,
+    projectReviewGuidelinesPath: guidelines?.path,
+    projectReviewGuidelines: guidelines?.content,
   };
 }
 
