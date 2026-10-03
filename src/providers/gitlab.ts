@@ -14,7 +14,7 @@ import {
   type ProviderConfig,
   type PrSummary,
 } from "../types.js";
-import { isAuthErrorMessage, isCommandUnavailableMessage } from "./cli.js";
+import { isAuthErrorMessage, isCommandUnavailableMessage, runCli } from "./cli.js";
 import { type ProviderAdapter } from "./types.js";
 
 interface GitLabMrListItem {
@@ -59,7 +59,7 @@ export const gitlabAdapter: ProviderAdapter = {
       return unsupported(provider, `GitLab host is disabled in config: ${repo.remote.host}`);
     }
 
-    const listResult = await pi.exec("glab", [
+    const listResult = await runCli(pi, "glab", [
       "-R",
       repo.remote.repoRef,
       "mr",
@@ -111,7 +111,7 @@ export const gitlabAdapter: ProviderAdapter = {
       return unsupported(provider, `GitLab host is disabled in config: ${repo.remote.host}`);
     }
 
-    const result = await pi.exec("glab", [
+    const result = await runCli(pi, "glab", [
       "-R",
       repo.remote.repoRef,
       "mr",
@@ -159,7 +159,7 @@ async function getPrByIid(
   iid: number
 ): Promise<PrLookupResult> {
   const projectPath = getGitLabProjectPath(repoRef);
-  const detailResult = await pi.exec("glab", [
+  const detailResult = await runCli(pi, "glab", [
     "-R",
     repoRef,
     "mr",
@@ -181,7 +181,7 @@ async function getPrByIid(
     };
   }
 
-  const discussionsResult = await pi.exec("glab", [
+  const discussionsResult = await runCli(pi, "glab", [
     "-R",
     repoRef,
     "api",
@@ -196,7 +196,7 @@ async function getPrByIid(
     );
   }
 
-  const approvalsResult = await pi.exec("glab", [
+  const approvalsResult = await runCli(pi, "glab", [
     "-R",
     repoRef,
     "api",
@@ -211,7 +211,7 @@ async function getPrByIid(
     );
   }
 
-  const changesResult = await pi.exec("glab", [
+  const changesResult = await runCli(pi, "glab", [
     "-R",
     repoRef,
     "api",
