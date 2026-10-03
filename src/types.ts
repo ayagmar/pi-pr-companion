@@ -2,6 +2,7 @@ export type ProviderKind = "gitlab" | "github";
 export type StatusBarStyle = "minimal" | "diff-prefix" | "diff-suffix";
 export type PrCheckStatus = "success" | "failure" | "pending" | "none";
 export type PrReadinessVerdict = "ready" | "needs-changes" | "blocked";
+export type PrState = "open" | "closed" | "merged";
 
 export interface ProviderHostConfig {
   enabled?: boolean;
@@ -111,6 +112,8 @@ export interface PrSummary {
   threadSummary?: PrThreadSummary;
   approvalSummary?: PrApprovalSummary;
   behindTarget?: string;
+  /** Set by detail lookups; list lookups only return open PRs. */
+  state?: PrState;
   readiness?: PrReadiness;
 }
 

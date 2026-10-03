@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { evaluatePrReadiness, getReadinessHint } from "../src/pr-readiness.js";
 import { githubAdapter } from "../src/providers/github.js";
 import { type ProviderConfig, type RepoContext } from "../src/types.js";
 
@@ -105,4 +106,28 @@ void test("a failed review threads query keeps the PR instead of failing the loo
   assert.deepEqual(result.pr.diffStats, { additions: 1, deletions: 1 });
   assert.deepEqual(result.pr.approvalSummary, { decision: "APPROVED" });
   assert.equal(result.pr.threadSummary, undefined);
+});
+
+void test("a merged PR looked up by reference is reported as merged and not ready", async () => {
+  const pi = {
+    exec: (_command: string, args: string[]) => {
+      if (args[0] === "pr" && args[1] === "view") {
+        return Promise.resolve({
+          code: 0,
+          stdout: JSON.stringify({ ...PR_VIEW, state: "MERGED" }),
+          stderr: "",
+        });
+      }
+      return Promise.resolve({ code: 0, stdout: "{}", stderr: "" });
+    },
+  } as unknown as ExtensionAPI;
+
+  const result = await githubAdapter.getPrByRef(pi, repo, provider, byRef);
+  assert.equal(result.kind, "active");
+  if (result.kind !== "active") return;
+  assert.equal(result.pr.state, "merged");
+  const readiness = evaluatePrReadiness(result.pr);
+  assert.equal(readiness.verdict, "blocked");
+  assert.deepEqual(readiness.blockers, ["merged"]);
+  assert.equal(getReadinessHint(result.pr), "merged");
 });

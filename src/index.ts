@@ -1505,6 +1505,7 @@ function buildResolvedPrStatusMessage(cwd: string, resolved: ResolvedPrContext):
     `PR: ${pr.ref}`,
     `Title: ${pr.title}`,
     `URL: ${pr.url}`,
+    pr.state && pr.state !== "open" ? `State: ${pr.state}` : undefined,
     `Source branch: ${pr.sourceBranch}`,
     `Target branch: ${pr.targetBranch}`,
     `Draft: ${pr.draft ? "yes" : "no"}`,
