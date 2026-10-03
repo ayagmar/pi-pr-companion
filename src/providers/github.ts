@@ -8,7 +8,7 @@ import {
   type ProviderConfig,
   type PrSummary,
 } from "../types.js";
-import { isAuthErrorMessage, isCommandUnavailableMessage } from "./cli.js";
+import { isAuthErrorMessage, isCommandUnavailableMessage, runCli } from "./cli.js";
 import { type ProviderAdapter } from "./types.js";
 
 interface GitHubPullRequestItem {
@@ -84,7 +84,7 @@ export const githubAdapter: ProviderAdapter = {
       return unsupported(provider, `GitHub host is disabled in config: ${repo.remote.host}`);
     }
 
-    const listResult = await pi.exec("gh", [
+    const listResult = await runCli(pi, "gh", [
       "pr",
       "list",
       "--repo",
@@ -142,7 +142,7 @@ export const githubAdapter: ProviderAdapter = {
       return unsupported(provider, `GitHub host is disabled in config: ${repo.remote.host}`);
     }
 
-    const result = await pi.exec("gh", [
+    const result = await runCli(pi, "gh", [
       "pr",
       "list",
       "--repo",
@@ -189,7 +189,7 @@ async function getPrByNumber(
   repoRef: string,
   iid: number
 ): Promise<PrLookupResult> {
-  const detailResult = await pi.exec("gh", [
+  const detailResult = await runCli(pi, "gh", [
     "pr",
     "view",
     String(iid),
@@ -212,12 +212,12 @@ async function getPrByNumber(
   }
 
   const repoPath = getGitHubRepoPath(repoRef);
-  const filesResult = await pi.exec("gh", ["api", `repos/${repoPath}/pulls/${iid}/files`]);
+  const filesResult = await runCli(pi, "gh", ["api", `repos/${repoPath}/pulls/${iid}/files`]);
   if (filesResult.code !== 0) {
     return classifyFailure(provider, host, repoRef, filesResult.stderr || filesResult.stdout);
   }
 
-  const threadsResult = await pi.exec("gh", [
+  const threadsResult = await runCli(pi, "gh", [
     "api",
     "graphql",
     "-f",
