@@ -19,10 +19,7 @@ export const AUTH_ERROR_PATTERNS = [
   "gh auth login",
   "try authenticating",
   "authentication",
-  "authentication required",
   "not logged in",
   "forbidden",
   "unauthorized",
-  "401",
-  "403",
 ] as const;

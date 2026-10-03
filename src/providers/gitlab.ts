@@ -444,10 +444,15 @@ function isBlockedMergeStatus(status: string): boolean {
 
 function isPrNotFoundMessage(message: string): boolean {
   const normalized = message.toLowerCase();
+  // A missing project also answers 404; that is a config problem, not "no MR".
+  if (normalized.includes("project not found")) {
+    return false;
+  }
+
   return (
     normalized.includes("merge request not found") ||
     normalized.includes("no merge requests found") ||
-    normalized.includes("404")
+    /\b404\b/.test(normalized)
   );
 }
 

@@ -31,9 +31,16 @@ export async function runCli(
   return { code: result.code, stdout: result.stdout, stderr: result.stderr };
 }
 
+// gh reports HTTP failures as "HTTP 401: ..." or "(HTTP 403)". Bare 401/403
+// substrings are not enough: they also match PR numbers and paths.
+const HTTP_AUTH_STATUS_PATTERN = /\bhttp 40[13]\b/;
+
 export function isAuthErrorMessage(message: string): boolean {
   const normalized = message.toLowerCase();
-  return AUTH_ERROR_PATTERNS.some((pattern) => normalized.includes(pattern));
+  return (
+    AUTH_ERROR_PATTERNS.some((pattern) => normalized.includes(pattern)) ||
+    HTTP_AUTH_STATUS_PATTERN.test(normalized)
+  );
 }
 
 export function isCommandUnavailableMessage(message: string): boolean {
