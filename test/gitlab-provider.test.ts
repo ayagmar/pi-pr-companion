@@ -104,3 +104,28 @@ void test("MR discussions are fetched across all pages", async () => {
   assert.ok(discussionsCall?.includes("--paginate"));
   assert.ok(discussionsCall?.some((arg) => arg.endsWith("/discussions?per_page=100")));
 });
+
+void test("diff stats count changed lines that look like file headers", async () => {
+  const diff = [
+    "@@ -1,3 +1,3 @@",
+    " SELECT 1;",
+    "--- old SQL comment",
+    "+++ counter++ on a new line",
+    "-plain removal",
+    "+plain addition",
+    "\\ No newline at end of file",
+  ].join("\n");
+  const pi = mockGlab((endpoint) => {
+    if (endpoint.includes("/changes")) {
+      return ok({ changes: [{ diff }, { diff: "--- a/x\n+++ b/x\n@@ -1 +1 @@\n-a\n+b\n" }] });
+    }
+    return ok(endpoint.includes("/discussions") ? [] : {});
+  });
+
+  const result = await gitlabAdapter.getPrByRef(pi, repo, provider, byRef);
+  assert.equal(result.kind, "active");
+  assert.deepEqual(result.kind === "active" ? result.pr.diffStats : undefined, {
+    additions: 3,
+    deletions: 3,
+  });
+});

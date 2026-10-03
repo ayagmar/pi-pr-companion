@@ -58,22 +58,28 @@ export function sumDiffStats(chunks: RepoDiffStats[]): RepoDiffStats | undefined
 }
 
 export function countPatchDiffStats(diff: string): RepoDiffStats {
-  const lines = diff.split("\n");
   let additions = 0;
   let deletions = 0;
+  let inHunk = false;
 
-  for (const line of lines) {
-    if (line.startsWith("+++ ") || line.startsWith("--- ") || line.startsWith("@@")) {
+  for (const line of diff.split("\n")) {
+    if (line.startsWith("@@")) {
+      inHunk = true;
+      continue;
+    }
+
+    // "--- a/file" and "+++ b/file" headers only appear before the first hunk.
+    // Inside a hunk, "--- x" is a removed line that starts with "-- ".
+    if (!inHunk) {
       continue;
     }
 
     if (line.startsWith("+")) {
       additions += 1;
-      continue;
-    }
-
-    if (line.startsWith("-")) {
+    } else if (line.startsWith("-")) {
       deletions += 1;
+    } else if (line.startsWith("diff --git ")) {
+      inHunk = false;
     }
   }
 
