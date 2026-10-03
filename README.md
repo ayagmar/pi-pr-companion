@@ -97,13 +97,15 @@ Rules:
 - `#123` resolves in the current GitHub repo
 - `!123` resolves in the current GitLab repo
 - URLs can point at another repo
+- URLs copied from a PR tab (`/files`, `/commits`, `/checks`, `/diffs`) work too
+- `#123`, `!123` and URLs also work on a detached HEAD
 - branch switching only works when the PR belongs to the current repo
 
 ## What each command is for
 
 ### `/pr status`
 
-Shows the PR title, branches, checks, merge state, threads, diff size, coverage, approvals, and readiness.
+Shows the PR title, branches, checks, merge state, threads, diff size, coverage, approvals, and readiness. Merged and closed PRs show their state and are never reported as ready. If threads, approvals or diff stats cannot be fetched, they show as unknown and the rest of the status is still shown.
 
 ### `/pr review`
 
@@ -278,7 +280,7 @@ Example:
 
 ## Self-hosted hosts
 
-Enable hosts under the matching provider:
+Enable hosts under the matching provider. Host names are matched case-insensitively. A host listed under one provider takes precedence over the `github`/`gitlab` name guess:
 
 ```json
 {
