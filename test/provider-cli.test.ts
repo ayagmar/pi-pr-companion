@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { CLI_TIMEOUT_MS, isAuthErrorMessage, runCli } from "../src/providers/cli.js";
+import {
+  CLI_TIMEOUT_MS,
+  isAuthErrorMessage,
+  parsePaginatedJsonArray,
+  runCli,
+} from "../src/providers/cli.js";
 import { githubAdapter } from "../src/providers/github.js";
 import { gitlabAdapter } from "../src/providers/gitlab.js";
 import { type ProviderConfig, type RepoContext } from "../src/types.js";
@@ -116,3 +121,11 @@ void test("a GitLab 404 for a missing project is an error, not a missing MR", as
 function fail(stderr: string) {
   return { code: 1, stdout: "", stderr, killed: false };
 }
+
+void test("parsePaginatedJsonArray accepts merged and back-to-back pages", () => {
+  assert.deepEqual(parsePaginatedJsonArray('[{"a":"]["}]'), [{ a: "][" }]);
+  assert.deepEqual(parsePaginatedJsonArray('[1,2]\n[3]  [{"s":"x\\"]"}]'), [1, 2, 3, { s: 'x"]' }]);
+  assert.deepEqual(parsePaginatedJsonArray("[]"), []);
+  assert.throws(() => parsePaginatedJsonArray('{"message":"404 Not Found"}'));
+  assert.throws(() => parsePaginatedJsonArray("[1,"));
+});
