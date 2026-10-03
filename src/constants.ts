@@ -26,4 +26,3 @@ export const AUTH_ERROR_PATTERNS = [
   "401",
   "403",
 ] as const;
-
