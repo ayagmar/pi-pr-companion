@@ -228,6 +228,7 @@ void test("custom hosts can select a provider without repo root config", async (
       ],
     },
     async () => {
+      const graphqlCalls: string[] = [];
       const pi = {
         exec: (command: string, args: string[]) => {
           if (command === "glab") {
@@ -292,6 +293,7 @@ void test("custom hosts can select a provider without repo root config", async (
               );
             }
             if (joined.includes("api graphql")) {
+              graphqlCalls.push(joined);
               return ok(
                 JSON.stringify({
                   data: {
@@ -315,6 +317,9 @@ void test("custom hosts can select a provider without repo root config", async (
       assert.equal(snapshot.reason, "visible");
       assert.equal(snapshot.result?.provider, "github");
       assert.equal(snapshot.provider?.kind, "github");
+      // GitHub Enterprise: the GraphQL call must go to the PR's host, not github.com.
+      assert.equal(graphqlCalls.length, 1);
+      assert.match(graphqlCalls[0] ?? "", /^api graphql --hostname code\.example\.com /);
     }
   );
 });
