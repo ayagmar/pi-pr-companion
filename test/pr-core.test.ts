@@ -63,7 +63,15 @@ void test("getConfigPath respects PI_CODING_AGENT_DIR", () => {
   process.env.PI_CODING_AGENT_DIR = "~/custom-pi-agent";
 
   try {
-    assert.match(getConfigPath(), /custom-pi-agent\/pi-pr-companion-settings\.json$/);
+    assert.equal(
+      getConfigPath(),
+      path.join(os.homedir(), "custom-pi-agent", "pi-pr-companion-settings.json")
+    );
+    delete process.env.PI_CODING_AGENT_DIR;
+    assert.equal(
+      getConfigPath(),
+      path.join(os.homedir(), ".pi", "agent", "pi-pr-companion-settings.json")
+    );
   } finally {
     if (previousConfigPath === undefined) {
       delete process.env.PI_PR_COMPANION_CONFIG;

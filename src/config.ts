@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import {
   DEFAULT_CACHE_TTL_MS,
   DEFAULT_CONFIG_FILENAME,
@@ -41,10 +42,7 @@ export function getConfigPath(): string {
     return normalizePath(envPath);
   }
 
-  const agentDir = process.env.PI_CODING_AGENT_DIR?.trim()
-    ? normalizePath(process.env.PI_CODING_AGENT_DIR)
-    : path.join(os.homedir(), ".pi/agent");
-  return path.join(agentDir, DEFAULT_CONFIG_FILENAME);
+  return path.join(getAgentDir(), DEFAULT_CONFIG_FILENAME);
 }
 
 export async function loadConfig(): Promise<PrCompanionConfig> {
