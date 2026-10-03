@@ -165,7 +165,7 @@ void test("GitHub repos use gh without any repo root config", async () => {
                     repository: {
                       pullRequest: {
                         reviewThreads: { nodes: [] },
-                        reviews: { nodes: [{ state: "APPROVED" }] },
+                        latestOpinionatedReviews: { nodes: [{ state: "APPROVED" }] },
                       },
                     },
                   },
@@ -300,7 +300,7 @@ void test("custom hosts can select a provider without repo root config", async (
                     repository: {
                       pullRequest: {
                         reviewThreads: { nodes: [] },
-                        reviews: { nodes: [{ state: "APPROVED" }] },
+                        latestOpinionatedReviews: { nodes: [{ state: "APPROVED" }] },
                       },
                     },
                   },

@@ -123,7 +123,7 @@ void test("get_pr_context and list_repo_prs expose provider-backed PR data", asy
                   repository: {
                     pullRequest: {
                       reviewThreads: { nodes: [] },
-                      reviews: { nodes: [{ state: "APPROVED" }] },
+                      latestOpinionatedReviews: { nodes: [{ state: "APPROVED" }] },
                     },
                   },
                 },
@@ -273,7 +273,7 @@ void test("get_pr_context resolves a relative cwd against the tool context cwd",
                   repository: {
                     pullRequest: {
                       reviewThreads: { nodes: [] },
-                      reviews: { nodes: [{ state: "APPROVED" }] },
+                      latestOpinionatedReviews: { nodes: [{ state: "APPROVED" }] },
                     },
                   },
                 },
@@ -375,7 +375,7 @@ void test("get_pr_context does not leak local review guidelines into an external
                   repository: {
                     pullRequest: {
                       reviewThreads: { nodes: [] },
-                      reviews: { nodes: [{ state: "APPROVED" }] },
+                      latestOpinionatedReviews: { nodes: [{ state: "APPROVED" }] },
                     },
                   },
                 },
@@ -464,7 +464,7 @@ void test("switch_pr_branch uses the shared switch path and blocks on dirty work
                 repository: {
                   pullRequest: {
                     reviewThreads: { nodes: [] },
-                    reviews: { nodes: [{ state: "APPROVED" }] },
+                    latestOpinionatedReviews: { nodes: [{ state: "APPROVED" }] },
                   },
                 },
               },

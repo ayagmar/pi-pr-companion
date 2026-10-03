@@ -85,7 +85,6 @@ export interface PrApprovalSummary {
   decision?: string;
   approvedCount?: number;
   requestedChangesCount?: number;
-  commentCount?: number;
 }
 
 export interface PrReadiness {

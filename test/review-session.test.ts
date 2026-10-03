@@ -111,7 +111,7 @@ void test("review session stores an origin and end-review returns with a summary
                 repository: {
                   pullRequest: {
                     reviewThreads: { nodes: [] },
-                    reviews: { nodes: [{ state: "APPROVED" }] },
+                    latestOpinionatedReviews: { nodes: [{ state: "APPROVED" }] },
                   },
                 },
               },

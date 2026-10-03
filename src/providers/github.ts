@@ -75,7 +75,7 @@ const GITHUB_THREADS_QUERY = `query($owner: String!, $name: String!, $number: In
           }
         }
       }
-      reviews(first: 100) {
+      latestOpinionatedReviews(first: 100) {
         nodes {
           state
         }
@@ -385,14 +385,17 @@ function parseGitHubThreadData(jsonText: string): {
       repository?: {
         pullRequest?: {
           reviewThreads?: { nodes?: GitHubReviewThreadNode[] };
-          reviews?: { nodes?: GitHubReviewNode[] };
+          latestOpinionatedReviews?: { nodes?: GitHubReviewNode[] };
         };
       };
     };
   };
 
   const threadNodes = payload.data?.repository?.pullRequest?.reviewThreads?.nodes ?? [];
-  const reviewStates = (payload.data?.repository?.pullRequest?.reviews?.nodes ?? [])
+  // One entry per reviewer: their latest approving or change-requesting review.
+  const reviewStates = (
+    payload.data?.repository?.pullRequest?.latestOpinionatedReviews?.nodes ?? []
+  )
     .map((item) => item.state)
     .filter((item): item is string => typeof item === "string");
 
@@ -433,7 +436,6 @@ function buildApprovalSummary(
     ...current,
     ...(approvedCount > 0 ? { approvedCount } : {}),
     ...(requestedChangesCount > 0 ? { requestedChangesCount } : {}),
-    commentCount: reviewStates.length,
   };
 }
 
