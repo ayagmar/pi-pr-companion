@@ -35,6 +35,26 @@ export async function runCli(
 // substrings are not enough: they also match PR numbers and paths.
 const HTTP_AUTH_STATUS_PATTERN = /\bhttp 40[13]\b/;
 
+/**
+ * Parse the output of a secondary lookup (threads, approvals, diff stats).
+ * These only enrich a PR that was already found, so a failed call or an
+ * unexpected payload leaves that part out instead of failing the lookup.
+ */
+export function parseOptionalCliOutput<T>(
+  result: CliResult,
+  parse: (stdout: string) => T
+): T | undefined {
+  if (result.code !== 0) {
+    return undefined;
+  }
+
+  try {
+    return parse(result.stdout);
+  } catch {
+    return undefined;
+  }
+}
+
 export function isAuthErrorMessage(message: string): boolean {
   const normalized = message.toLowerCase();
   return (

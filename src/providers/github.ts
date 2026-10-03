@@ -8,7 +8,12 @@ import {
   type ProviderConfig,
   type PrSummary,
 } from "../types.js";
-import { isAuthErrorMessage, isCommandUnavailableMessage, runCli } from "./cli.js";
+import {
+  isAuthErrorMessage,
+  isCommandUnavailableMessage,
+  parseOptionalCliOutput,
+  runCli,
+} from "./cli.js";
 import { type ProviderAdapter } from "./types.js";
 
 interface GitHubPullRequestItem {
@@ -234,20 +239,16 @@ async function getPrByNumber(
     "-F",
     `number=${iid}`,
   ]);
-  if (threadsResult.code !== 0) {
-    return classifyFailure(provider, host, repoRef, threadsResult.stderr || threadsResult.stdout);
-  }
-
-  const threadData = parseGitHubThreadData(threadsResult.stdout);
-  const approvalSummary = buildApprovalSummary(pr.approvalSummary, threadData.reviewStates);
+  const threadData = parseOptionalCliOutput(threadsResult, parseGitHubThreadData);
+  const approvalSummary = buildApprovalSummary(pr.approvalSummary, threadData?.reviewStates ?? []);
 
   return {
     kind: "active",
     provider: provider.kind,
     pr: {
       ...pr,
-      ...(threadData.threadSummary ? { threadSummary: threadData.threadSummary } : {}),
-      ...(threadData.threadItems.length > 0 ? { threadItems: threadData.threadItems } : {}),
+      ...(threadData?.threadSummary ? { threadSummary: threadData.threadSummary } : {}),
+      ...(threadData?.threadItems.length ? { threadItems: threadData.threadItems } : {}),
       ...(approvalSummary ? { approvalSummary } : {}),
       ...(pr.detailedMergeStatus?.toLowerCase() === "behind"
         ? { behindTarget: "behind target" }

@@ -90,3 +90,19 @@ void test("approvals are counted once per reviewer from their latest opinionated
     approvedCount: 2,
   });
 });
+
+void test("a failed review threads query keeps the PR instead of failing the lookup", async () => {
+  const pi = mockGh(() => ({
+    code: 1,
+    stdout: "",
+    stderr: "HTTP 403: Resource not accessible by integration (https://api.github.com/graphql)",
+  }));
+
+  const result = await githubAdapter.getPrByRef(pi, repo, provider, byRef);
+  assert.equal(result.kind, "active");
+  if (result.kind !== "active") return;
+  assert.equal(result.pr.ref, "#42");
+  assert.deepEqual(result.pr.diffStats, { additions: 1, deletions: 1 });
+  assert.deepEqual(result.pr.approvalSummary, { decision: "APPROVED" });
+  assert.equal(result.pr.threadSummary, undefined);
+});

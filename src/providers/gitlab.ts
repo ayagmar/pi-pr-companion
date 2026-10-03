@@ -14,7 +14,12 @@ import {
   type ProviderConfig,
   type PrSummary,
 } from "../types.js";
-import { isAuthErrorMessage, isCommandUnavailableMessage, runCli } from "./cli.js";
+import {
+  isAuthErrorMessage,
+  isCommandUnavailableMessage,
+  parseOptionalCliOutput,
+  runCli,
+} from "./cli.js";
 import { type ProviderAdapter } from "./types.js";
 
 interface GitLabMrListItem {
@@ -187,14 +192,6 @@ async function getPrByIid(
     "api",
     `projects/${projectPath}/merge_requests/${iid}/discussions`,
   ]);
-  if (discussionsResult.code !== 0) {
-    return classifyFailure(
-      provider,
-      host,
-      repoRef,
-      discussionsResult.stderr || discussionsResult.stdout
-    );
-  }
 
   const approvalsResult = await runCli(pi, "glab", [
     "-R",
@@ -202,14 +199,6 @@ async function getPrByIid(
     "api",
     `projects/${projectPath}/merge_requests/${iid}/approvals`,
   ]);
-  if (approvalsResult.code !== 0) {
-    return classifyFailure(
-      provider,
-      host,
-      repoRef,
-      approvalsResult.stderr || approvalsResult.stdout
-    );
-  }
 
   const changesResult = await runCli(pi, "glab", [
     "-R",
@@ -217,21 +206,21 @@ async function getPrByIid(
     "api",
     `projects/${projectPath}/merge_requests/${iid}/changes`,
   ]);
-  if (changesResult.code !== 0) {
-    return classifyFailure(provider, host, repoRef, changesResult.stderr || changesResult.stdout);
-  }
 
-  const threadData = parseGitLabDiscussionData(discussionsResult.stdout);
-  const approvalSummary = parseGitLabApprovalSummary(approvalsResult.stdout, pr.approvalSummary);
-  const diffStats = parseGitLabDiffStats(changesResult.stdout);
+  const threadData = parseOptionalCliOutput(discussionsResult, parseGitLabDiscussionData);
+  const approvalSummary =
+    parseOptionalCliOutput(approvalsResult, (stdout) =>
+      parseGitLabApprovalSummary(stdout, pr.approvalSummary)
+    ) ?? pr.approvalSummary;
+  const diffStats = parseOptionalCliOutput(changesResult, parseGitLabDiffStats);
 
   return {
     kind: "active",
     provider: provider.kind,
     pr: {
       ...pr,
-      ...(threadData.threadSummary ? { threadSummary: threadData.threadSummary } : {}),
-      ...(threadData.threadItems.length > 0 ? { threadItems: threadData.threadItems } : {}),
+      ...(threadData?.threadSummary ? { threadSummary: threadData.threadSummary } : {}),
+      ...(threadData?.threadItems.length ? { threadItems: threadData.threadItems } : {}),
       ...(approvalSummary ? { approvalSummary } : {}),
       ...(diffStats ? { diffStats } : {}),
       ...(pr.detailedMergeStatus?.toLowerCase().includes("rebase")
