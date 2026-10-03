@@ -14,7 +14,11 @@ interface RegisteredTool {
     signal: AbortSignal | undefined,
     onUpdate: unknown,
     ctx: { cwd: string }
-  ) => Promise<{ content: { type: string; text: string }[]; details: unknown }>;
+  ) => Promise<{
+    content: { type: string; text: string }[];
+    details: unknown;
+    isError?: boolean;
+  }>;
 }
 
 interface PrContextToolPayload {
@@ -503,6 +507,7 @@ void test("switch_pr_branch uses the shared switch path and blocks on dirty work
     { cwd: "/workspace/repo" }
   );
   assert.match(result.content[0]?.text ?? "", /Dirty worktree/i);
+  assert.equal(result.isError, true, "failed switches must be reported as tool errors");
 });
 
 function ok(stdout: string) {
