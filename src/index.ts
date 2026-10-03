@@ -7,6 +7,7 @@ import {
   type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { Container, type SelectItem, SelectList, Text } from "@earendil-works/pi-tui";
+import { Type } from "typebox";
 import { formatBranchSwitchSuccessMessage } from "./branch-switch.js";
 import { buildArgumentCompletions, buildHelpText, parseSubcommand } from "./commands.js";
 import {
@@ -73,29 +74,21 @@ const FOOTER_STYLE_OPTIONS: Record<StatusBarStyle, string> = {
 const SETTINGS_VALUE_SHOWN = "shown";
 const SETTINGS_VALUE_HIDDEN = "hidden";
 
-const OPTIONAL_CWD_SCHEMA = {
-  type: "object",
-  properties: {
-    cwd: { type: "string", description: "Optional repo path override" },
-  },
-} as never;
+const CWD_PARAM = Type.Optional(Type.String({ description: "Optional repo path override" }));
 
-const PR_CONTEXT_SCHEMA = {
-  type: "object",
-  properties: {
-    reference: { type: "string", description: "Optional PR ref or URL" },
-    cwd: { type: "string", description: "Optional repo path override" },
-  },
-} as never;
+const OPTIONAL_CWD_SCHEMA = Type.Object({
+  cwd: CWD_PARAM,
+});
 
-const SWITCH_PR_SCHEMA = {
-  type: "object",
-  required: ["reference"],
-  properties: {
-    reference: { type: "string", description: "PR ref or URL" },
-    cwd: { type: "string", description: "Optional repo path override" },
-  },
-} as never;
+const PR_CONTEXT_SCHEMA = Type.Object({
+  reference: Type.Optional(Type.String({ description: "Optional PR ref or URL" })),
+  cwd: CWD_PARAM,
+});
+
+const SWITCH_PR_SCHEMA = Type.Object({
+  reference: Type.String({ description: "PR ref or URL" }),
+  cwd: CWD_PARAM,
+});
 
 export default function prCompanionExtension(pi: ExtensionAPI) {
   const refreshStatus = async (
@@ -192,11 +185,10 @@ function registerTools(pi: ExtensionAPI): void {
       "Prefer this tool over raw gh/glab commands for PR context.",
     ],
     parameters: PR_CONTEXT_SCHEMA,
+    annotations: { readOnlyHint: true, openWorldHint: true },
     execute: async (_toolCallId, params, _signal, _onUpdate, ctx) => {
-      const input = params as { cwd?: string; reference?: string };
-      const cwd = resolveToolCwd(ctx.cwd, input.cwd);
-      const reference = typeof input.reference === "string" ? input.reference : undefined;
-      const resolved = await resolvePrContext(pi, cwd, reference);
+      const cwd = resolveToolCwd(ctx.cwd, params.cwd);
+      const resolved = await resolvePrContext(pi, cwd, params.reference);
       const payload = await buildToolPrContextPayload(cwd, resolved);
       return {
         content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
@@ -214,9 +206,9 @@ function registerTools(pi: ExtensionAPI): void {
       "Use this tool when you need a compact list of active PRs for the current repository before choosing one to inspect.",
     ],
     parameters: OPTIONAL_CWD_SCHEMA,
+    annotations: { readOnlyHint: true, openWorldHint: true },
     execute: async (_toolCallId, params, _signal, _onUpdate, ctx) => {
-      const input = params as { cwd?: string };
-      const cwd = resolveToolCwd(ctx.cwd, input.cwd);
+      const cwd = resolveToolCwd(ctx.cwd, params.cwd);
       const listed = await listActivePrsForCurrentRepo(pi, cwd);
       const payload = {
         cwd,
@@ -244,15 +236,16 @@ function registerTools(pi: ExtensionAPI): void {
       "Expect this tool to fail on dirty worktrees instead of forcing a branch switch.",
     ],
     parameters: SWITCH_PR_SCHEMA,
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     execute: async (_toolCallId, params, _signal, _onUpdate, ctx) => {
-      const input = params as { cwd?: string; reference: string };
-      const cwd = resolveToolCwd(ctx.cwd, input.cwd);
-      const resolved = await resolvePrContext(pi, cwd, input.reference);
+      const cwd = resolveToolCwd(ctx.cwd, params.cwd);
+      const resolved = await resolvePrContext(pi, cwd, params.reference);
       if (!resolved.repo || !resolved.result || resolved.result.kind !== "active") {
         const message = getResolvedPrErrorMessage(resolved) ?? "PR lookup failed";
         return {
           content: [{ type: "text", text: message }],
           details: { ok: false, message },
+          isError: true,
         };
       }
 
@@ -261,6 +254,7 @@ function registerTools(pi: ExtensionAPI): void {
         return {
           content: [{ type: "text", text: message }],
           details: { ok: false, message },
+          isError: true,
         };
       }
 
@@ -269,6 +263,7 @@ function registerTools(pi: ExtensionAPI): void {
         return {
           content: [{ type: "text", text: message }],
           details: { ok: false, message },
+          isError: true,
         };
       }
 
@@ -282,6 +277,7 @@ function registerTools(pi: ExtensionAPI): void {
       return {
         content: [{ type: "text", text: result.message }],
         details: result,
+        ...(result.ok ? {} : { isError: true }),
       };
     },
   });
