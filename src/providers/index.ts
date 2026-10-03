@@ -1,4 +1,4 @@
-import { getProviderConfig } from "../config.js";
+import { findHostConfig, getProviderConfig } from "../config.js";
 import { isGitHubHost, isGitLabHost } from "../git.js";
 import {
   type ActivePrLookup,
@@ -28,6 +28,15 @@ export function detectProviderKind(
   config: PrCompanionConfig,
   repo: RepoContext | { remote: ParsedGitRemote }
 ): ProviderKind | undefined {
+  // A host listed under exactly one provider wins over the name heuristics,
+  // so a GitLab instance whose name contains "github" can still be configured.
+  const explicitMatches = config.providers.filter(
+    (provider) => findHostConfig(provider, repo.remote.host) !== undefined
+  );
+  if (explicitMatches.length === 1) {
+    return explicitMatches[0]?.kind;
+  }
+
   if (isGitHubHost(repo.remote.host)) {
     return "github";
   }
@@ -36,14 +45,7 @@ export function detectProviderKind(
     return "gitlab";
   }
 
-  const explicitMatches = config.providers.filter((provider) =>
-    Object.hasOwn(provider.hosts, repo.remote.host)
-  );
-  if (explicitMatches.length !== 1) {
-    return undefined;
-  }
-
-  return explicitMatches[0]?.kind;
+  return undefined;
 }
 
 export function getDetectedProviderConfig(config: PrCompanionConfig, repo: RepoContext) {

@@ -8,6 +8,7 @@ import {
   defaultConfig,
   getConfigPath,
   getProviderConfig,
+  isHostEnabled,
   normalizeConfig,
   saveConfig,
   setShowCoverageInStatusBar,
@@ -181,6 +182,34 @@ void test("detectProviderKind falls back to explicit host config for custom doma
     }),
     "github"
   );
+});
+
+void test("host config ignores arrays, matches hosts case-insensitively, and wins over name heuristics", () => {
+  const config = normalizeConfig({
+    providers: [
+      { kind: "github", hosts: ["code.example.com"] },
+      { kind: "gitlab", hosts: { " Code.GitHub-Mirror.Corp ": { enabled: true } } },
+    ],
+  });
+  assert.deepEqual(getProviderConfig(config, "github")?.hosts, {});
+  assert.deepEqual(getProviderConfig(config, "gitlab")?.hosts, {
+    "code.github-mirror.corp": { enabled: true },
+  });
+
+  const remote = (host: string) => ({
+    remote: { host, fullPath: "team/repo", repoRef: `${host}/team/repo`, webUrl: "" },
+  });
+  assert.equal(detectProviderKind(config, remote("code.github-mirror.corp")), "gitlab");
+  assert.equal(detectProviderKind(config, remote("github.com")), "github");
+
+  const gitlab = getProviderConfig(config, "gitlab");
+  assert.ok(gitlab);
+  const disabled = {
+    ...gitlab,
+    hosts: { "Git.Example.com": { enabled: false }, "other.example.com": {} },
+  };
+  assert.equal(isHostEnabled(disabled, "git.example.com"), false);
+  assert.equal(isHostEnabled(disabled, "OTHER.example.com"), true);
 });
 
 void test("status bar config helpers update footer preferences", () => {
