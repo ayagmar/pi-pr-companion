@@ -35,6 +35,8 @@ Or straight from GitHub:
 pi install git:github.com/ayagmar/pi-pr-companion
 ```
 
+Update later with `pi update npm:pi-pr-companion` (or `pi update --extensions` for all packages); a bare `pi update` only updates pi itself.
+
 For local development:
 
 ```bash
@@ -113,6 +115,8 @@ Use `--extra` when you want a custom focus:
 /pr review --extra focus on auth, migrations, and missing tests
 ```
 
+If Pi is still working on something, the review is queued as a follow-up and starts when the current run finishes.
+
 ### `/pr review session`
 
 Starts a review session, keeps a visible reminder in Pi, and lets you return later.
@@ -165,6 +169,12 @@ Shows the current repo’s open PRs with quick actions.
 ### `/pr workspace`
 
 Shows PRs across repos you listed in `workspaceRoots`.
+
+## Modes
+
+Everything works in Pi's interactive TUI. In RPC mode, `/pr` commands use the standard dialogs (select, confirm, input, editor), so the PR pickers become plain select lists and there is no loading spinner. In print and JSON modes, commands that need a picker or editor ask you to use interactive mode, and the others print their result (to stderr in JSON mode).
+
+The footer refreshes in the background when a session starts and after each agent run settles, so slow `gh`/`glab` calls never delay startup.
 
 ## Review flow
 
