@@ -1,9 +1,9 @@
-import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import test from "node:test";
+import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import prCompanionExtension from "../src/index.js";
 
 interface RegisteredTool {

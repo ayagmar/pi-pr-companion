@@ -1,8 +1,9 @@
-import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import test from "node:test";
+import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
   defaultConfig,
   getConfigPath,
@@ -14,12 +15,11 @@ import {
   setStatusBarStyle,
 } from "../src/config.js";
 import { getDiffStats, parseGitRemote, resolveRepoContext, switchToBranch } from "../src/git.js";
-import { detectProviderKind } from "../src/providers/index.js";
 import { formatPickerEntry, formatUpdatedAge } from "../src/pr-display.js";
+import { formatStatusText } from "../src/pr-state.js";
 import { getGitHubPrSeverity } from "../src/providers/github.js";
 import { getGitLabPrSeverity } from "../src/providers/gitlab.js";
-import { formatStatusText } from "../src/pr-state.js";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { detectProviderKind } from "../src/providers/index.js";
 
 void test("defaultConfig uses generic provider settings", () => {
   const config = defaultConfig();

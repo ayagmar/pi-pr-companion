@@ -1,6 +1,6 @@
 import path from "node:path";
 import { evaluatePrReadiness, getReadinessHint } from "./pr-readiness.js";
-import type { PrCompanionConfig, PrSummary } from "./types.js";
+import { type PrCompanionConfig, type PrSummary } from "./types.js";
 
 export function formatPickerEntry(
   pr: PrSummary,

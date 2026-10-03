@@ -1,21 +1,21 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isIgnoredBranch, loadConfig } from "./config.js";
-import { formatUpdatedAge, isStalePr, sortPrsForActionability } from "./pr-display.js";
 import { getDiffStats, resolveRepoContext } from "./git.js";
+import { formatUpdatedAge, isStalePr, sortPrsForActionability } from "./pr-display.js";
 import { evaluatePrReadiness, getReadinessHint } from "./pr-readiness.js";
 import {
   getDetectedProviderConfig,
   getProviderAdapter,
   getProviderSeverity,
 } from "./providers/index.js";
-import type {
-  PrCompanionConfig,
-  PrLookupResult,
-  PrSummary,
-  ProviderConfig,
-  RepoContext,
-  RepoStatusSnapshot,
-  StatusBarStyle,
+import {
+  type PrCompanionConfig,
+  type PrLookupResult,
+  type ProviderConfig,
+  type PrSummary,
+  type RepoContext,
+  type RepoStatusSnapshot,
+  type StatusBarStyle,
 } from "./types.js";
 
 interface CacheEntry {

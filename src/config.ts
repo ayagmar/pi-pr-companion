@@ -6,12 +6,12 @@ import {
   DEFAULT_CONFIG_FILENAME,
   DEFAULT_IGNORED_BRANCHES,
 } from "./constants.js";
-import type {
-  ConfigActionResult,
-  PrCompanionConfig,
-  ProviderConfig,
-  ProviderKind,
-  StatusBarStyle,
+import {
+  type ConfigActionResult,
+  type PrCompanionConfig,
+  type ProviderConfig,
+  type ProviderKind,
+  type StatusBarStyle,
 } from "./types.js";
 
 interface RawProviderConfig {
@@ -37,7 +37,7 @@ interface RawConfig {
 
 export function getConfigPath(): string {
   const envPath = process.env.PI_PR_COMPANION_CONFIG;
-  if (envPath && envPath.trim()) {
+  if (envPath?.trim()) {
     return normalizePath(envPath);
   }
 

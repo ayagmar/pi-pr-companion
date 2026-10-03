@@ -1,10 +1,10 @@
-import test from "node:test";
 import assert from "node:assert/strict";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import test from "node:test";
+import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { parsePrReference } from "../src/pr-reference.js";
 import { githubAdapter } from "../src/providers/github.js";
 import { gitlabAdapter } from "../src/providers/gitlab.js";
-import type { ProviderConfig, RepoContext } from "../src/types.js";
+import { type ProviderConfig, type RepoContext } from "../src/types.js";
 
 const githubProvider: ProviderConfig = {
   kind: "github",

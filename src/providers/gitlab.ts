@@ -1,20 +1,20 @@
+import { isHostEnabled } from "../config.js";
 import {
   buildCheckSummary,
   countPatchDiffStats,
   normalizeCheckStatus,
   sumDiffStats,
 } from "../pr-normalize.js";
-import { isHostEnabled } from "../config.js";
-import type {
-  PrApprovalSummary,
-  PrCheckItem,
-  PrDetails,
-  PrLookupResult,
-  PrSummary,
-  ProviderConfig,
+import {
+  type PrApprovalSummary,
+  type PrCheckItem,
+  type PrDetails,
+  type PrLookupResult,
+  type ProviderConfig,
+  type PrSummary,
 } from "../types.js";
 import { isAuthErrorMessage, isCommandUnavailableMessage } from "./cli.js";
-import type { ProviderAdapter } from "./types.js";
+import { type ProviderAdapter } from "./types.js";
 
 interface GitLabMrListItem {
   iid?: number;

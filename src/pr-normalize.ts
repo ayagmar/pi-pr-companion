@@ -1,4 +1,9 @@
-import type { PrCheckItem, PrCheckStatus, PrCheckSummary, RepoDiffStats } from "./types.js";
+import {
+  type PrCheckItem,
+  type PrCheckStatus,
+  type PrCheckSummary,
+  type RepoDiffStats,
+} from "./types.js";
 
 export function buildCheckSummary(items: PrCheckItem[]): PrCheckSummary {
   if (items.length === 0) {

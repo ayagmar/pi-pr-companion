@@ -1,14 +1,14 @@
-import { buildCheckSummary, normalizeCheckStatus, sumDiffStats } from "../pr-normalize.js";
 import { isHostEnabled } from "../config.js";
-import type {
-  PrApprovalSummary,
-  PrDetails,
-  PrLookupResult,
-  PrSummary,
-  ProviderConfig,
+import { buildCheckSummary, normalizeCheckStatus, sumDiffStats } from "../pr-normalize.js";
+import {
+  type PrApprovalSummary,
+  type PrDetails,
+  type PrLookupResult,
+  type ProviderConfig,
+  type PrSummary,
 } from "../types.js";
 import { isAuthErrorMessage, isCommandUnavailableMessage } from "./cli.js";
-import type { ProviderAdapter } from "./types.js";
+import { type ProviderAdapter } from "./types.js";
 
 interface GitHubPullRequestItem {
   number?: number;

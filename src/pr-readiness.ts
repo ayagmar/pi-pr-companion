@@ -1,4 +1,4 @@
-import type { PrCheckStatus, PrDetails, PrReadiness, PrSummary } from "./types.js";
+import { type PrCheckStatus, type PrDetails, type PrReadiness, type PrSummary } from "./types.js";
 
 export function evaluatePrReadiness(pr: PrSummary | PrDetails): PrReadiness {
   const blockers: string[] = [];
@@ -115,7 +115,7 @@ function needsRebase(
   return (
     Boolean(
       normalizedMergeStatus &&
-      (normalizedMergeStatus.includes("rebase") || normalizedMergeStatus === "behind")
-    ) || Boolean(normalizedBehindTarget && normalizedBehindTarget.includes("behind"))
+        (normalizedMergeStatus.includes("rebase") || normalizedMergeStatus === "behind")
+    ) || Boolean(normalizedBehindTarget?.includes("behind"))
   );
 }
