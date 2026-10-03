@@ -1,5 +1,6 @@
 import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isHostEnabled } from "../config.js";
+import { PR_LIST_LIMIT } from "../constants.js";
 import { buildCheckSummary, normalizeCheckStatus, normalizePrState } from "../pr-normalize.js";
 import {
   type PrApprovalSummary,
@@ -161,6 +162,8 @@ export const githubAdapter: ProviderAdapter = {
       repo.remote.repoRef,
       "--state",
       "open",
+      "--limit",
+      String(PR_LIST_LIMIT),
       "--json",
       GITHUB_PR_FIELDS,
     ]);

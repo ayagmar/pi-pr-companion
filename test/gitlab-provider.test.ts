@@ -143,3 +143,16 @@ void test("a closed MR keeps its state", async () => {
   const result = await gitlabAdapter.getPrByRef(pi, repo, provider, byRef);
   assert.equal(result.kind === "active" ? result.pr.state : undefined, "closed");
 });
+
+void test("listing open MRs asks for more than glab's default 30", async () => {
+  const calls: string[][] = [];
+  const pi = {
+    exec: (_command: string, args: string[]) => {
+      calls.push(args);
+      return Promise.resolve(ok([]));
+    },
+  } as unknown as ExtensionAPI;
+
+  assert.deepEqual(await gitlabAdapter.listRepoActivePrs(pi, repo, provider), []);
+  assert.equal(calls[0]?.[calls[0].indexOf("--per-page") + 1], "100");
+});

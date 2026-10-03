@@ -1,5 +1,6 @@
 import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isHostEnabled } from "../config.js";
+import { PR_LIST_LIMIT } from "../constants.js";
 import {
   buildCheckSummary,
   countPatchDiffStats,
@@ -124,6 +125,8 @@ export const gitlabAdapter: ProviderAdapter = {
       repo.remote.repoRef,
       "mr",
       "list",
+      "--per-page",
+      String(PR_LIST_LIMIT),
       "--output",
       "json",
     ]);
