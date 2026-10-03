@@ -202,11 +202,21 @@ export function isIgnoredBranch(provider: ProviderConfig, branch: string): boole
 }
 
 export function isHostEnabled(provider: ProviderConfig, host: string): boolean {
-  const hostEntries = Object.entries(provider.hosts);
-  if (hostEntries.length === 0) return true;
+  if (Object.keys(provider.hosts).length === 0) return true;
 
-  const hostConfig = provider.hosts[host];
-  return hostConfig?.enabled !== false;
+  return findHostConfig(provider, host)?.enabled !== false;
+}
+
+/** Look up a host entry; hostnames are case-insensitive. */
+export function findHostConfig(
+  provider: ProviderConfig,
+  host: string
+): ProviderConfig["hosts"][string] | undefined {
+  const normalizedHost = host.toLowerCase();
+  const entry = Object.entries(provider.hosts).find(
+    ([configuredHost]) => configuredHost.toLowerCase() === normalizedHost
+  );
+  return entry?.[1];
 }
 
 export function normalizePath(input: string): string {
@@ -266,11 +276,12 @@ function normalizeIgnoredBranches(value: unknown): string[] {
 }
 
 function normalizeHosts(value: unknown): Record<string, { enabled?: boolean }> {
-  if (!value || typeof value !== "object") return {};
+  // An array is an object too; `hosts: ["a.com"]` must not become {"0": {}}.
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
 
   const entries = Object.entries(value as Record<string, unknown>);
   const normalizedEntries = entries.flatMap(([host, config]) => {
-    const normalizedHost = host.trim();
+    const normalizedHost = host.trim().toLowerCase();
     if (!normalizedHost) return [];
     if (!config || typeof config !== "object") return [[normalizedHost, {}]] as const;
 
