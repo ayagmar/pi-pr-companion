@@ -219,9 +219,12 @@ async function getPrByNumber(
 
   const repoPath = getGitHubRepoPath(repoRef);
 
+  // gh api targets github.com unless told otherwise, unlike `gh pr --repo HOST/...`.
   const threadsResult = await runCli(pi, "gh", [
     "api",
     "graphql",
+    "--hostname",
+    host,
     "-f",
     `query=${GITHUB_THREADS_QUERY}`,
     "-f",
