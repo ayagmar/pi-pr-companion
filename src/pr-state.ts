@@ -1,4 +1,4 @@
-import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { type ExtensionAPI, type Theme } from "@earendil-works/pi-coding-agent";
 import { isIgnoredBranch, loadConfig } from "./config.js";
 import { getDiffStats, resolveRepoContext } from "./git.js";
 import { formatUpdatedAge, isStalePr, sortPrsForActionability } from "./pr-display.js";
@@ -29,9 +29,7 @@ interface ProviderRepoContext {
   provider?: ProviderConfig;
 }
 
-interface StatusTheme {
-  fg(color: string, text: string): string;
-}
+type StatusTheme = Pick<Theme, "fg">;
 
 interface StatusTextOptions {
   theme?: StatusTheme;
