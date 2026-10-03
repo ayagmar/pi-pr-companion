@@ -42,7 +42,12 @@ void test("extension registers pr command, tools, and lifecycle refresh hooks", 
     captured.tools.map((tool) => tool.name),
     ["get_pr_context", "list_repo_prs", "switch_pr_branch"]
   );
-  assert.deepEqual(captured.eventNames, ["session_start", "session_tree", "agent_end"]);
+  assert.deepEqual(captured.eventNames, [
+    "session_start",
+    "session_tree",
+    "agent_settled",
+    "session_shutdown",
+  ]);
   for (const tool of captured.tools) {
     assert.ok(tool.promptSnippet, `${tool.name} should expose a promptSnippet for Pi >=0.59`);
   }
@@ -77,3 +82,90 @@ void test("tool parameters are TypeBox object schemas that validate their inputs
   assert.equal(listRepoPrs.annotations?.readOnlyHint, true);
   assert.equal(switchPrBranch.annotations?.readOnlyHint, false);
 });
+
+type LifecycleHandler = (event: unknown, ctx: unknown) => unknown;
+
+function createLifecycleHarness() {
+  const handlers = new Map<string, LifecycleHandler>();
+  const pendingExecs: (() => void)[] = [];
+  const statusUpdates: unknown[] = [];
+
+  const pi = {
+    on: (eventName: string, handler: LifecycleHandler) => {
+      handlers.set(eventName, handler);
+    },
+    registerCommand: () => undefined,
+    registerTool: () => undefined,
+    // Every git call stays pending until the test releases it, then reports "not a repo".
+    exec: () =>
+      new Promise((resolve) => {
+        pendingExecs.push(() => resolve({ code: 128, stdout: "", stderr: "not a git repo" }));
+      }),
+  } as unknown as ExtensionAPI;
+
+  const ctx = {
+    cwd: "/workspace/not-a-repo",
+    hasUI: true,
+    mode: "tui",
+    sessionManager: { getBranch: () => [] },
+    ui: {
+      setStatus: (_key: string, text: string | undefined) => statusUpdates.push(text),
+      setWidget: () => undefined,
+      theme: { fg: (_color: string, text: string) => text },
+    },
+  };
+
+  const releaseExecs = async () => {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      while (pendingExecs.length > 0) pendingExecs.shift()?.();
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+  };
+
+  return { pi, ctx, handlers, statusUpdates, releaseExecs };
+}
+
+void test("session_start refreshes the footer without blocking startup", async () => {
+  const previousConfigPath = process.env.PI_PR_COMPANION_CONFIG;
+  process.env.PI_PR_COMPANION_CONFIG = "/nonexistent/pi-pr-companion-settings.json";
+  try {
+    const harness = createLifecycleHarness();
+    prCompanionExtension(harness.pi);
+
+    const returned = harness.handlers.get("session_start")?.(
+      { type: "session_start" },
+      harness.ctx
+    );
+    assert.equal(returned, undefined, "session_start must not wait for gh/glab lookups");
+
+    await harness.releaseExecs();
+    assert.deepEqual(harness.statusUpdates, [undefined]);
+  } finally {
+    restoreEnv("PI_PR_COMPANION_CONFIG", previousConfigPath);
+  }
+});
+
+void test("refreshes that finish after session_shutdown leave the stale ctx alone", async () => {
+  const previousConfigPath = process.env.PI_PR_COMPANION_CONFIG;
+  process.env.PI_PR_COMPANION_CONFIG = "/nonexistent/pi-pr-companion-settings.json";
+  try {
+    const harness = createLifecycleHarness();
+    prCompanionExtension(harness.pi);
+
+    harness.handlers.get("agent_settled")?.({ type: "agent_settled" }, harness.ctx);
+    harness.handlers.get("session_shutdown")?.({ type: "session_shutdown" }, harness.ctx);
+
+    await harness.releaseExecs();
+    assert.deepEqual(harness.statusUpdates, []);
+  } finally {
+    restoreEnv("PI_PR_COMPANION_CONFIG", previousConfigPath);
+  }
+});
+
+function restoreEnv(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[name];
+  } else {
+    process.env[name] = value;
+  }
+}
