@@ -107,12 +107,16 @@ interface RpcCommandContext {
     notify: (message: string, level?: "info" | "warning" | "error") => void;
     select: (title: string, options: string[]) => Promise<string | undefined>;
     custom: () => Promise<undefined>;
+    setStatus: (key: string, text: string | undefined) => void;
+    theme: { fg: (color: string, text: string) => string };
   };
 }
 
 function createRpcHarness() {
   const notifications: { message: string; level?: "info" | "warning" | "error" }[] = [];
   const selects: { title: string; options: string[] }[] = [];
+  const statuses: (string | undefined)[] = [];
+  const execCalls: string[] = [];
   let customCalls = 0;
   let command: { handler: (args: string, ctx: RpcCommandContext) => Promise<void> } | undefined;
 
@@ -122,7 +126,10 @@ function createRpcHarness() {
     registerCommand: (_name: string, registered: typeof command) => {
       command = registered;
     },
-    exec: execMock,
+    exec: (tool: string, args: string[]) => {
+      execCalls.push(`${tool} ${args.join(" ")}`);
+      return execMock(tool, args);
+    },
   } as unknown as ExtensionAPI);
 
   // Mirrors pi's RPC UI: dialogs are forwarded, custom components resolve to undefined.
@@ -142,6 +149,10 @@ function createRpcHarness() {
         customCalls += 1;
         return Promise.resolve(undefined);
       },
+      setStatus: (_key, text) => {
+        statuses.push(text);
+      },
+      theme: { fg: (_color, text) => text },
     },
   };
 
@@ -149,6 +160,8 @@ function createRpcHarness() {
     ctx,
     notifications,
     selects,
+    statuses,
+    execCalls,
     getCommand: () => command,
     getCustomCalls: () => customCalls,
   };
@@ -178,6 +191,20 @@ void test("RPC active PR picker falls back to the select dialog", async () => {
   assert.match(harness.selects[0]?.title ?? "", /Active PRs for current repo · 1 open PR/);
   assert.match(harness.selects[0]?.options[0] ?? "", /#42/);
   assert.deepEqual(harness.notifications, []);
+});
+
+void test("/pr refresh looks the PR up once for both the footer and the message", async () => {
+  const harness = createRpcHarness();
+  const command = harness.getCommand();
+  assert.ok(command);
+
+  await command.handler("refresh", harness.ctx);
+
+  assert.deepEqual(harness.statuses, ["+3 -1 PR #42 ✓"]);
+  assert.equal(harness.notifications.length, 1);
+  assert.match(harness.notifications[0]?.message ?? "", /^Refreshed PR status\.\n\n.*PR: #42/s);
+  assert.equal(harness.execCalls.filter((call) => call.startsWith("gh pr view")).length, 1);
+  assert.equal(harness.execCalls.filter((call) => call.startsWith("gh api graphql")).length, 1);
 });
 
 function execMock(tool: string, args: string[]) {
