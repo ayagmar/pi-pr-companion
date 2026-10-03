@@ -24,10 +24,14 @@ Supports:
 
 ## Install
 
-After publishing:
-
 ```bash
 pi install npm:pi-pr-companion
+```
+
+Or straight from GitHub:
+
+```bash
+pi install git:github.com/ayagmar/pi-pr-companion
 ```
 
 For local development:
@@ -313,16 +317,15 @@ or:
 pnpm check
 ```
 
-## Release
+## Releasing
 
-Local release commands:
+Releases are cut from GitHub Actions — never from a laptop.
 
-```bash
-pnpm run release:patch
-pnpm run release:minor
-pnpm run release:major
-```
+1. Merge Conventional Commits (`feat:`, `fix:`, `feat!:` …) into `master`.
+2. Run **Actions → Release → Run workflow** (or `gh workflow run release.yml -f increment=auto`).
+   `auto` derives the bump from the commits; pick `patch`/`minor`/`major` to override. Tick `dry_run` to preview.
+3. The workflow runs `pnpm run check`, then release-it bumps `package.json`, updates `CHANGELOG.md`,
+   tags `vX.Y.Z`, pushes and creates the GitHub release, and finally `npm publish` publishes with
+   provenance through npm trusted publishing (OIDC — no npm token stored in the repo).
 
-GitHub Actions also includes a manual `Release` workflow.
-
-For npm publishing, set `NPM_TOKEN` in the repository secrets.
+Preview locally with `pnpm release:dry`.
