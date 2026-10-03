@@ -131,3 +131,16 @@ void test("a merged PR looked up by reference is reported as merged and not read
   assert.deepEqual(readiness.blockers, ["merged"]);
   assert.equal(getReadinessHint(result.pr), "merged");
 });
+
+void test("listing open PRs asks for more than gh's default 30", async () => {
+  const calls: string[][] = [];
+  const pi = {
+    exec: (_command: string, args: string[]) => {
+      calls.push(args);
+      return Promise.resolve({ code: 0, stdout: "[]", stderr: "" });
+    },
+  } as unknown as ExtensionAPI;
+
+  assert.deepEqual(await githubAdapter.listRepoActivePrs(pi, repo, provider), []);
+  assert.equal(calls[0]?.[calls[0].indexOf("--limit") + 1], "100");
+});

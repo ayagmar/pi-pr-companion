@@ -3,6 +3,9 @@ export const STATUS_KEY = "pr";
 export const DEFAULT_CACHE_TTL_MS = 15_000;
 export const DEFAULT_CONFIG_FILENAME = "pi-pr-companion-settings.json";
 
+// gh pr list and glab mr list return 30 items unless asked for more.
+export const PR_LIST_LIMIT = 100;
+
 export const DEFAULT_IGNORED_BRANCHES = ["main", "master"] as const;
 
 export const REVIEW_PROMPT_NAME = "review-pr";
