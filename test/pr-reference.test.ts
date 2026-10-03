@@ -94,6 +94,29 @@ void test("parsePrReference supports refs and provider URLs", () => {
     }
   );
 
+  // Links copied from a PR tab resolve to the PR itself.
+  for (const tab of ["files", "commits", "checks", "files/abc123..def456"]) {
+    const parsed = parsePrReference(`https://github.com/octo/repo/pull/42/${tab}`);
+    assert.equal(
+      parsed?.kind === "url" ? parsed.url : undefined,
+      "https://github.com/octo/repo/pull/42"
+    );
+  }
+  for (const tab of ["diffs", "commits", "pipelines"]) {
+    const parsed = parsePrReference(
+      `https://gitlab.example.com/group/subgroup/repo/-/merge_requests/53/${tab}?diff_id=1`
+    );
+    assert.equal(
+      parsed?.kind === "url" ? parsed.remote.repoRef : undefined,
+      "gitlab.example.com/group/subgroup/repo"
+    );
+    assert.equal(
+      parsed?.kind === "url" ? parsed.url : undefined,
+      "https://gitlab.example.com/group/subgroup/repo/-/merge_requests/53"
+    );
+  }
+  assert.equal(parsePrReference("https://github.com/octo/repo/pulls"), undefined);
+
   assert.equal(parsePrReference("feature/test"), undefined);
 });
 
