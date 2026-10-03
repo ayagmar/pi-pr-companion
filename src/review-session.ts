@@ -63,10 +63,15 @@ function setReviewWidget(ctx: ExtensionContext, state: ReviewSessionState | unde
     return;
   }
 
-  const reviewPr = state.pr;
+  const message = `Review session active · ${state.pr.ref} · /pr end-review`;
+  // Component factories only render in the TUI; RPC clients accept plain lines.
+  if (ctx.mode !== "tui") {
+    ctx.ui.setWidget(REVIEW_WIDGET_KEY, [message]);
+    return;
+  }
+
   ctx.ui.setWidget(REVIEW_WIDGET_KEY, (_tui, theme) => ({
     render(width: number): string[] {
-      const message = `Review session active · ${reviewPr.ref} · /pr end-review`;
       return [truncateToWidth(theme.fg("warning", message), width)];
     },
     invalidate: () => undefined,

@@ -10,6 +10,7 @@ interface RegisteredCommand {
 interface ReviewCommandContext {
   cwd: string;
   hasUI: boolean;
+  mode: "tui" | "rpc";
   ui: {
     notify: (message: string, level?: "info" | "warning" | "error") => void;
     select: (title: string, items: string[]) => Promise<string | undefined>;
@@ -53,6 +54,7 @@ void test("review session stores an origin and end-review returns with a summary
   let command: RegisteredCommand | undefined;
   let entryCounter = 1;
   let nextSelectChoice: string | undefined;
+  const widgets: unknown[] = [];
 
   const pi = {
     on: () => undefined,
@@ -133,12 +135,15 @@ void test("review session stores an origin and end-review returns with a summary
   const ctx: ReviewCommandContext = {
     cwd: "/workspace/repo",
     hasUI: true,
+    mode: "rpc",
     ui: {
       notify: (message, level) => {
         notifications.push(level ? { message, level } : { message });
       },
       select: () => Promise.resolve(nextSelectChoice),
-      setWidget: () => undefined,
+      setWidget: (_key, value) => {
+        widgets.push(value);
+      },
     },
     sessionManager: {
       getBranch: () => entries,
@@ -154,6 +159,8 @@ void test("review session stores an origin and end-review returns with a summary
   await command.handler("review session #42", ctx);
 
   assert.equal(sentMessages[0]?.message, "/review-pr https://github.com/octo/repo/pull/42");
+  // RPC clients only render plain widget lines, never component factories.
+  assert.deepEqual(widgets, [["Review session active · #42 · /pr end-review"]]);
   const activeState = entries[entries.length - 1]?.data as { active?: boolean; originId?: string };
   assert.equal(activeState.active, true);
   assert.equal(activeState.originId, "leaf-1");
@@ -234,6 +241,7 @@ void test("end-review can return with a structured fix queue", async () => {
   const ctx: ReviewCommandContext = {
     cwd: "/workspace/repo",
     hasUI: true,
+    mode: "rpc",
     ui: {
       notify: () => undefined,
       select: () => Promise.resolve(nextSelectChoice),
@@ -316,6 +324,7 @@ void test("end-review supports explicit PR comment drafting", async () => {
   const ctx: ReviewCommandContext = {
     cwd: "/workspace/repo",
     hasUI: true,
+    mode: "rpc",
     ui: {
       notify: (message, level) => {
         notifications.push(level ? { message, level } : { message });
