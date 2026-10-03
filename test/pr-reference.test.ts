@@ -224,7 +224,7 @@ void test("gitlabAdapter resolves a PR by URL without current repo context", asy
 
       if (
         args.join(" ") ===
-        "-R gitlab.example.com/group/subgroup/repo api projects/group%2Fsubgroup%2Frepo/merge_requests/53/discussions"
+        "-R gitlab.example.com/group/subgroup/repo api --paginate projects/group%2Fsubgroup%2Frepo/merge_requests/53/discussions?per_page=100"
       ) {
         return ok(
           JSON.stringify([
@@ -281,7 +281,7 @@ void test("gitlabAdapter resolves a PR by URL without current repo context", asy
 
   assert.deepEqual(calls, [
     "glab -R gitlab.example.com/group/subgroup/repo mr view 53 --output json",
-    "glab -R gitlab.example.com/group/subgroup/repo api projects/group%2Fsubgroup%2Frepo/merge_requests/53/discussions",
+    "glab -R gitlab.example.com/group/subgroup/repo api --paginate projects/group%2Fsubgroup%2Frepo/merge_requests/53/discussions?per_page=100",
     "glab -R gitlab.example.com/group/subgroup/repo api projects/group%2Fsubgroup%2Frepo/merge_requests/53/approvals",
     "glab -R gitlab.example.com/group/subgroup/repo api projects/group%2Fsubgroup%2Frepo/merge_requests/53/changes",
   ]);

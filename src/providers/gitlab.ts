@@ -18,6 +18,7 @@ import {
   isAuthErrorMessage,
   isCommandUnavailableMessage,
   parseOptionalCliOutput,
+  parsePaginatedJsonArray,
   runCli,
 } from "./cli.js";
 import { type ProviderAdapter } from "./types.js";
@@ -186,11 +187,13 @@ async function getPrByIid(
     };
   }
 
+  // The discussions endpoint returns 20 items per page by default.
   const discussionsResult = await runCli(pi, "glab", [
     "-R",
     repoRef,
     "api",
-    `projects/${projectPath}/merge_requests/${iid}/discussions`,
+    "--paginate",
+    `projects/${projectPath}/merge_requests/${iid}/discussions?per_page=100`,
   ]);
 
   const approvalsResult = await runCli(pi, "glab", [
@@ -315,12 +318,7 @@ function parseGitLabDiscussionData(jsonText: string): {
   threadSummary?: PrDetails["threadSummary"];
   threadItems: NonNullable<PrDetails["threadItems"]>;
 } {
-  const payload = JSON.parse(jsonText) as unknown;
-  if (!Array.isArray(payload)) {
-    return { threadItems: [] };
-  }
-
-  const threadItems = payload.flatMap((discussion) => {
+  const threadItems = parsePaginatedJsonArray(jsonText).flatMap((discussion) => {
     const item = discussion as GitLabDiscussion;
     const notes = Array.isArray(item.notes) ? item.notes : [];
     const unresolvedNote = notes.find((note) => note.resolvable && !note.resolved) ?? notes[0];

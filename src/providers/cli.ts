@@ -73,3 +73,55 @@ export function isCommandUnavailableMessage(message: string): boolean {
     normalized.includes("enoent")
   );
 }
+
+/**
+ * Parse `--paginate` output that holds JSON arrays. Depending on the CLI
+ * version, pages arrive as one merged array or as one array per page printed
+ * back to back; both are flattened into a single list.
+ */
+export function parsePaginatedJsonArray(text: string): unknown[] {
+  const items: unknown[] = [];
+  for (const page of splitJsonValues(text)) {
+    const value = JSON.parse(page) as unknown;
+    if (!Array.isArray(value)) {
+      throw new SyntaxError("Expected a JSON array page");
+    }
+    items.push(...value);
+  }
+  return items;
+}
+
+function splitJsonValues(text: string): string[] {
+  const values: string[] = [];
+  let depth = 0;
+  let start = -1;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+    } else if (char === "[" || char === "{") {
+      if (depth === 0) start = index;
+      depth += 1;
+    } else if (char === "]" || char === "}") {
+      depth -= 1;
+      if (depth === 0) values.push(text.slice(start, index + 1));
+    } else if (depth === 0 && char !== undefined && char.trim()) {
+      throw new SyntaxError(`Unexpected character outside JSON value: ${char}`);
+    }
+  }
+
+  if (depth !== 0 || inString) {
+    throw new SyntaxError("Unterminated JSON value");
+  }
+  return values;
+}

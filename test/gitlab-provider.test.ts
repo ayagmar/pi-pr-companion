@@ -78,3 +78,29 @@ void test("a failed approvals or changes call keeps the MR instead of reporting 
   assert.equal(result.pr.diffStats, undefined);
   assert.deepEqual(result.pr.threadSummary, { total: 0, unresolved: 0 });
 });
+
+void test("MR discussions are fetched across all pages", async () => {
+  const discussion = (id: string, resolved: boolean) => ({
+    id,
+    notes: [{ id: 1, body: `note ${id}`, resolvable: true, resolved }],
+  });
+  const calls: string[][] = [];
+  const pi = mockGlab((endpoint, args) => {
+    calls.push(args);
+    if (endpoint.includes("/discussions")) {
+      // Older glab prints one array per page back to back.
+      const page1 = Array.from({ length: 20 }, (_, i) => discussion(`a${i}`, true));
+      const page2 = [discussion("b0", false), discussion("b1", false)];
+      return ok(`${JSON.stringify(page1)}\n${JSON.stringify(page2)}`);
+    }
+    return ok({});
+  });
+
+  const result = await gitlabAdapter.getPrByRef(pi, repo, provider, byRef);
+  assert.equal(result.kind, "active");
+  if (result.kind !== "active") return;
+  assert.deepEqual(result.pr.threadSummary, { total: 22, unresolved: 2 });
+  const discussionsCall = calls.find((args) => args.some((arg) => arg.includes("/discussions")));
+  assert.ok(discussionsCall?.includes("--paginate"));
+  assert.ok(discussionsCall?.some((arg) => arg.endsWith("/discussions?per_page=100")));
+});
