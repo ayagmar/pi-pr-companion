@@ -435,12 +435,20 @@ async function handleReview(
     ]
       .filter(Boolean)
       .join(" ");
-    pi.sendUserMessage(reviewCommand);
+    // Expand the /review-pr prompt template (sendUserMessage sends text literally
+    // by default) and queue it as a follow-up while the agent is busy, instead of
+    // letting pi reject the message.
+    const idle = ctx.isIdle();
+    pi.sendUserMessage(reviewCommand, {
+      expandPromptTemplates: true,
+      ...(idle ? {} : { deliverAs: "followUp" as const }),
+    });
+    const queuedSuffix = idle ? "" : " (queued until the current run finishes)";
     notify(
       ctx,
       startSession
-        ? `Started review session for ${result.pr.ref}`
-        : `Triggered /${REVIEW_PROMPT_NAME} for ${result.pr.ref}`
+        ? `Started review session for ${result.pr.ref}${queuedSuffix}`
+        : `Triggered /${REVIEW_PROMPT_NAME} for ${result.pr.ref}${queuedSuffix}`
     );
   } catch (error) {
     notify(ctx, toErrorMessage(error, "Failed to start PR review"), "error");

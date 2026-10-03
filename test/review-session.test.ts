@@ -11,6 +11,7 @@ interface ReviewCommandContext {
   cwd: string;
   hasUI: boolean;
   mode: "tui" | "rpc";
+  isIdle: () => boolean;
   ui: {
     notify: (message: string, level?: "info" | "warning" | "error") => void;
     select: (title: string, items: string[]) => Promise<string | undefined>;
@@ -54,6 +55,7 @@ void test("review session stores an origin and end-review returns with a summary
   let command: RegisteredCommand | undefined;
   let entryCounter = 1;
   let nextSelectChoice: string | undefined;
+  let idle = true;
   const widgets: unknown[] = [];
 
   const pi = {
@@ -136,6 +138,7 @@ void test("review session stores an origin and end-review returns with a summary
     cwd: "/workspace/repo",
     hasUI: true,
     mode: "rpc",
+    isIdle: () => idle,
     ui: {
       notify: (message, level) => {
         notifications.push(level ? { message, level } : { message });
@@ -158,7 +161,10 @@ void test("review session stores an origin and end-review returns with a summary
 
   await command.handler("review session #42", ctx);
 
-  assert.equal(sentMessages[0]?.message, "/review-pr https://github.com/octo/repo/pull/42");
+  assert.deepEqual(sentMessages[0], {
+    message: "/review-pr https://github.com/octo/repo/pull/42",
+    options: { expandPromptTemplates: true },
+  });
   // RPC clients only render plain widget lines, never component factories.
   assert.deepEqual(widgets, [["Review session active · #42 · /pr end-review"]]);
   const activeState = entries[entries.length - 1]?.data as { active?: boolean; originId?: string };
@@ -184,6 +190,17 @@ void test("review session stores an origin and end-review returns with a summary
   assert.match(
     notifications[notifications.length - 1]?.message ?? "",
     /Ended review session with a summary/
+  );
+
+  idle = false;
+  await command.handler("review #42", ctx);
+  assert.deepEqual(sentMessages[1], {
+    message: "/review-pr https://github.com/octo/repo/pull/42",
+    options: { expandPromptTemplates: true, deliverAs: "followUp" },
+  });
+  assert.match(
+    notifications[notifications.length - 1]?.message ?? "",
+    /Triggered \/review-pr for #42 \(queued until the current run finishes\)/
   );
 });
 
@@ -242,6 +259,7 @@ void test("end-review can return with a structured fix queue", async () => {
     cwd: "/workspace/repo",
     hasUI: true,
     mode: "rpc",
+    isIdle: () => true,
     ui: {
       notify: () => undefined,
       select: () => Promise.resolve(nextSelectChoice),
@@ -325,6 +343,7 @@ void test("end-review supports explicit PR comment drafting", async () => {
     cwd: "/workspace/repo",
     hasUI: true,
     mode: "rpc",
+    isIdle: () => true,
     ui: {
       notify: (message, level) => {
         notifications.push(level ? { message, level } : { message });
