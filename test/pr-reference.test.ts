@@ -110,7 +110,7 @@ void test("githubAdapter resolves a PR by ref in the current repo", async () => 
 
       if (
         args.join(" ") ===
-        "pr view 42 --repo github.com/octo/repo --json number,title,url,headRefName,baseRefName,updatedAt,isDraft,mergeStateStatus,reviewDecision,statusCheckRollup"
+        "pr view 42 --repo github.com/octo/repo --json number,title,url,headRefName,baseRefName,updatedAt,isDraft,mergeStateStatus,reviewDecision,statusCheckRollup,additions,deletions"
       ) {
         return ok(
           JSON.stringify({
@@ -124,12 +124,10 @@ void test("githubAdapter resolves a PR by ref in the current repo", async () => 
             mergeStateStatus: "CLEAN",
             reviewDecision: "APPROVED",
             statusCheckRollup: [{ conclusion: "SUCCESS", name: "ci" }],
+            additions: 5,
+            deletions: 2,
           })
         );
-      }
-
-      if (args.join(" ") === "api repos/octo/repo/pulls/42/files") {
-        return ok(JSON.stringify([{ additions: 5, deletions: 2 }]));
       }
 
       if (
@@ -174,8 +172,7 @@ void test("githubAdapter resolves a PR by ref in the current repo", async () => 
   });
 
   assert.deepEqual(calls, [
-    "gh pr view 42 --repo github.com/octo/repo --json number,title,url,headRefName,baseRefName,updatedAt,isDraft,mergeStateStatus,reviewDecision,statusCheckRollup",
-    "gh api repos/octo/repo/pulls/42/files",
+    "gh pr view 42 --repo github.com/octo/repo --json number,title,url,headRefName,baseRefName,updatedAt,isDraft,mergeStateStatus,reviewDecision,statusCheckRollup,additions,deletions",
     "gh api graphql -f query=query($owner: String!, $name: String!, $number: Int!) {\n  repository(owner: $owner, name: $name) {\n    pullRequest(number: $number) {\n      reviewThreads(first: 100) {\n        nodes {\n          isResolved\n          path\n          comments(first: 1) {\n            nodes {\n              body\n              author {\n                login\n              }\n            }\n          }\n        }\n      }\n      reviews(first: 100) {\n        nodes {\n          state\n        }\n      }\n    }\n  }\n} -f owner=octo -f name=repo -F number=42",
   ]);
   assert.equal(result.kind, "active");

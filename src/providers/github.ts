@@ -1,6 +1,6 @@
 import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isHostEnabled } from "../config.js";
-import { buildCheckSummary, normalizeCheckStatus, sumDiffStats } from "../pr-normalize.js";
+import { buildCheckSummary, normalizeCheckStatus } from "../pr-normalize.js";
 import {
   type PrApprovalSummary,
   type PrDetails,
@@ -22,6 +22,8 @@ interface GitHubPullRequestItem {
   mergeStateStatus?: string;
   reviewDecision?: string;
   statusCheckRollup?: unknown;
+  additions?: number;
+  deletions?: number;
 }
 
 interface GitHubStatusCheckRollupItem {
@@ -51,6 +53,10 @@ interface GitHubReviewNode {
 
 const GITHUB_PR_FIELDS =
   "number,title,url,headRefName,baseRefName,updatedAt,isDraft,mergeStateStatus,reviewDecision,statusCheckRollup";
+
+// additions/deletions cover the whole PR. The REST files endpoint returns
+// only the first 30 files unless paginated.
+const GITHUB_PR_DETAIL_FIELDS = `${GITHUB_PR_FIELDS},additions,deletions`;
 
 const GITHUB_THREADS_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
@@ -196,7 +202,7 @@ async function getPrByNumber(
     "--repo",
     repoRef,
     "--json",
-    GITHUB_PR_FIELDS,
+    GITHUB_PR_DETAIL_FIELDS,
   ]);
   if (detailResult.code !== 0) {
     return classifyFailure(provider, host, repoRef, detailResult.stderr || detailResult.stdout);
@@ -212,10 +218,6 @@ async function getPrByNumber(
   }
 
   const repoPath = getGitHubRepoPath(repoRef);
-  const filesResult = await runCli(pi, "gh", ["api", `repos/${repoPath}/pulls/${iid}/files`]);
-  if (filesResult.code !== 0) {
-    return classifyFailure(provider, host, repoRef, filesResult.stderr || filesResult.stdout);
-  }
 
   const threadsResult = await runCli(pi, "gh", [
     "api",
@@ -233,7 +235,6 @@ async function getPrByNumber(
     return classifyFailure(provider, host, repoRef, threadsResult.stderr || threadsResult.stdout);
   }
 
-  const diffStats = parseGitHubFileDiffStats(filesResult.stdout);
   const threadData = parseGitHubThreadData(threadsResult.stdout);
   const approvalSummary = buildApprovalSummary(pr.approvalSummary, threadData.reviewStates);
 
@@ -242,7 +243,6 @@ async function getPrByNumber(
     provider: provider.kind,
     pr: {
       ...pr,
-      ...(diffStats ? { diffStats } : {}),
       ...(threadData.threadSummary ? { threadSummary: threadData.threadSummary } : {}),
       ...(threadData.threadItems.length > 0 ? { threadItems: threadData.threadItems } : {}),
       ...(approvalSummary ? { approvalSummary } : {}),
@@ -290,6 +290,10 @@ function parsePrDetails(payload: GitHubPullRequestItem, fallback: PrSummary): Pr
   });
   const checkSummary = buildCheckSummary(checkItems);
   const pipelineStatus = checkSummary.status === "none" ? undefined : checkSummary.status;
+  const diffStats =
+    typeof payload.additions === "number" && typeof payload.deletions === "number"
+      ? { additions: payload.additions, deletions: payload.deletions }
+      : undefined;
 
   return {
     ...fallback,
@@ -301,6 +305,7 @@ function parsePrDetails(payload: GitHubPullRequestItem, fallback: PrSummary): Pr
     ...(checkItems.length > 0 ? { checkItems } : {}),
     ...(checkSummary.total > 0 ? { checkSummary } : {}),
     ...(reviewDecision ? { approvalSummary: { decision: reviewDecision } } : {}),
+    ...(diffStats ? { diffStats } : {}),
   };
 }
 
@@ -365,17 +370,6 @@ function collectStatusCheckItems(value: unknown): GitHubStatusCheckRollupItem[] 
   return Object.values(value as Record<string, unknown>).flatMap((item) =>
     collectStatusCheckItems(item)
   );
-}
-
-function parseGitHubFileDiffStats(jsonText: string) {
-  const payload = JSON.parse(jsonText) as { additions?: number; deletions?: number }[];
-  if (!Array.isArray(payload)) return undefined;
-
-  const chunks = payload.map((item) => ({
-    additions: typeof item.additions === "number" ? item.additions : 0,
-    deletions: typeof item.deletions === "number" ? item.deletions : 0,
-  }));
-  return sumDiffStats(chunks);
 }
 
 function parseGitHubThreadData(jsonText: string): {
