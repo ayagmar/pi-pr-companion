@@ -158,9 +158,6 @@ void test("GitHub repos use gh without any repo root config", async () => {
                 })
               );
             }
-            if (joined.includes("api repos/octo/repo/pulls/42/files")) {
-              return ok(JSON.stringify([{ additions: 4, deletions: 2 }]));
-            }
             if (joined.includes("api graphql")) {
               return ok(
                 JSON.stringify({
@@ -293,9 +290,6 @@ void test("custom hosts can select a provider without repo root config", async (
                   statusCheckRollup: [{ conclusion: "SUCCESS", name: "ci" }],
                 })
               );
-            }
-            if (joined.includes("api repos/octo/repo/pulls/7/files")) {
-              return ok(JSON.stringify([{ additions: 0, deletions: 0 }]));
             }
             if (joined.includes("api graphql")) {
               return ok(

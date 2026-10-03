@@ -116,10 +116,6 @@ void test("get_pr_context and list_repo_prs expose provider-backed PR data", asy
             );
           }
 
-          if (joined.includes("api repos/octo/repo/pulls/42/files")) {
-            return ok(JSON.stringify([{ additions: 3, deletions: 1 }]));
-          }
-
           if (joined.includes("api graphql")) {
             return ok(
               JSON.stringify({
@@ -270,10 +266,6 @@ void test("get_pr_context resolves a relative cwd against the tool context cwd",
             );
           }
 
-          if (joined.includes("api repos/octo/repo/pulls/42/files")) {
-            return ok(JSON.stringify([{ additions: 3, deletions: 1 }]));
-          }
-
           if (joined.includes("api graphql")) {
             return ok(
               JSON.stringify({
@@ -376,10 +368,6 @@ void test("get_pr_context does not leak local review guidelines into an external
             );
           }
 
-          if (joined.includes("api repos/octo/other/pulls/7/files")) {
-            return ok(JSON.stringify([{ additions: 2, deletions: 0 }]));
-          }
-
           if (joined.includes("api graphql") && joined.includes("number=7")) {
             return ok(
               JSON.stringify({
@@ -468,9 +456,6 @@ void test("switch_pr_branch uses the shared switch path and blocks on dirty work
               statusCheckRollup: [{ conclusion: "SUCCESS", name: "ci" }],
             })
           );
-        }
-        if (joined.includes("api repos/octo/repo/pulls/42/files")) {
-          return ok(JSON.stringify([{ additions: 1, deletions: 0 }]));
         }
         if (joined.includes("api graphql")) {
           return ok(

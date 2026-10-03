@@ -251,10 +251,6 @@ function execMock(tool: string, args: string[]) {
       );
     }
 
-    if (joined.includes("api repos/octo/repo/pulls/42/files")) {
-      return ok(JSON.stringify([{ additions: 3, deletions: 1 }]));
-    }
-
     if (joined.includes("api graphql")) {
       return ok(
         JSON.stringify({

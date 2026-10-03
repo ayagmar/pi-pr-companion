@@ -104,10 +104,6 @@ void test("review session stores an origin and end-review returns with a summary
           );
         }
 
-        if (joined.includes("api repos/octo/repo/pulls/42/files")) {
-          return ok(JSON.stringify([{ additions: 2, deletions: 1 }]));
-        }
-
         if (joined.includes("api graphql")) {
           return ok(
             JSON.stringify({
