@@ -5,6 +5,16 @@ export function evaluatePrReadiness(pr: PrSummary | PrDetails): PrReadiness {
   const warnings: string[] = [];
   const recommendations: string[] = [];
 
+  if (pr.state === "merged") {
+    blockers.push("merged");
+    recommendations.push("This PR is already merged.");
+  }
+
+  if (pr.state === "closed") {
+    blockers.push("closed");
+    recommendations.push("Reopen the PR before merging.");
+  }
+
   if (pr.draft) {
     blockers.push("draft");
     recommendations.push("Mark the PR ready for review before merging.");
@@ -89,6 +99,8 @@ function summarizeCheckStatus(status: string | undefined): PrCheckStatus {
 export function getReadinessHint(pr: PrDetails): string | undefined {
   const readiness = pr.readiness ?? evaluatePrReadiness(pr);
 
+  if (readiness.blockers.includes("merged")) return "merged";
+  if (readiness.blockers.includes("closed")) return "closed";
   if (readiness.blockers.includes("rebase")) return "rebase";
   if (readiness.blockers.includes("conflicts")) return "conflicts";
   if (readiness.blockers.includes("draft")) return "draft";

@@ -4,6 +4,7 @@ import {
   buildCheckSummary,
   countPatchDiffStats,
   normalizeCheckStatus,
+  normalizePrState,
   sumDiffStats,
 } from "../pr-normalize.js";
 import {
@@ -36,6 +37,7 @@ interface GitLabMrListItem {
 }
 
 interface GitLabMrViewItem extends GitLabMrListItem {
+  state?: string;
   head_pipeline?: {
     status?: string;
     coverage?: string;
@@ -272,6 +274,7 @@ function parseMrDetails(payload: GitLabMrViewItem, fallback: PrSummary): PrDetai
       ]
     : [];
   const checkSummary = buildCheckSummary(checkItems);
+  const state = normalizePrState(payload.state);
 
   return {
     ...fallback,
@@ -284,6 +287,7 @@ function parseMrDetails(payload: GitLabMrViewItem, fallback: PrSummary): PrDetai
     ...(coverage ? { coverage } : {}),
     ...(checkItems.length > 0 ? { checkItems } : {}),
     ...(checkSummary.total > 0 ? { checkSummary } : {}),
+    ...(state ? { state } : {}),
   };
 }
 

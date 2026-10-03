@@ -1,6 +1,6 @@
 import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isHostEnabled } from "../config.js";
-import { buildCheckSummary, normalizeCheckStatus } from "../pr-normalize.js";
+import { buildCheckSummary, normalizeCheckStatus, normalizePrState } from "../pr-normalize.js";
 import {
   type PrApprovalSummary,
   type PrDetails,
@@ -29,6 +29,7 @@ interface GitHubPullRequestItem {
   statusCheckRollup?: unknown;
   additions?: number;
   deletions?: number;
+  state?: string;
 }
 
 interface GitHubStatusCheckRollupItem {
@@ -61,7 +62,7 @@ const GITHUB_PR_FIELDS =
 
 // additions/deletions cover the whole PR. The REST files endpoint returns
 // only the first 30 files unless paginated.
-const GITHUB_PR_DETAIL_FIELDS = `${GITHUB_PR_FIELDS},additions,deletions`;
+const GITHUB_PR_DETAIL_FIELDS = `${GITHUB_PR_FIELDS},additions,deletions,state`;
 
 const GITHUB_THREADS_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
@@ -298,6 +299,7 @@ function parsePrDetails(payload: GitHubPullRequestItem, fallback: PrSummary): Pr
     typeof payload.additions === "number" && typeof payload.deletions === "number"
       ? { additions: payload.additions, deletions: payload.deletions }
       : undefined;
+  const state = normalizePrState(payload.state);
 
   return {
     ...fallback,
@@ -310,6 +312,7 @@ function parsePrDetails(payload: GitHubPullRequestItem, fallback: PrSummary): Pr
     ...(checkSummary.total > 0 ? { checkSummary } : {}),
     ...(reviewDecision ? { approvalSummary: { decision: reviewDecision } } : {}),
     ...(diffStats ? { diffStats } : {}),
+    ...(state ? { state } : {}),
   };
 }
 

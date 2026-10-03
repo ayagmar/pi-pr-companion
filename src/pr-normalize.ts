@@ -2,6 +2,7 @@ import {
   type PrCheckItem,
   type PrCheckStatus,
   type PrCheckSummary,
+  type PrState,
   type RepoDiffStats,
 } from "./types.js";
 
@@ -84,6 +85,24 @@ export function countPatchDiffStats(diff: string): RepoDiffStats {
   }
 
   return { additions, deletions };
+}
+
+/** Map GitHub (OPEN/CLOSED/MERGED) and GitLab (opened/closed/merged/locked) states. */
+export function normalizePrState(value: unknown): PrState | undefined {
+  if (typeof value !== "string") return undefined;
+
+  switch (value.trim().toLowerCase()) {
+    case "open":
+    case "opened":
+      return "open";
+    case "merged":
+      return "merged";
+    case "closed":
+    case "locked":
+      return "closed";
+    default:
+      return undefined;
+  }
 }
 
 export function normalizeCheckStatus(value: string | undefined): PrCheckStatus {

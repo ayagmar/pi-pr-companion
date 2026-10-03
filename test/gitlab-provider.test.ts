@@ -129,3 +129,17 @@ void test("diff stats count changed lines that look like file headers", async ()
     deletions: 3,
   });
 });
+
+void test("a closed MR keeps its state", async () => {
+  const pi = {
+    exec: (_command: string, args: string[]) =>
+      Promise.resolve(
+        args.includes("view")
+          ? ok({ ...MR_VIEW, state: "closed" })
+          : ok(args.some((a) => a.includes("/discussions")) ? [] : {})
+      ),
+  } as unknown as ExtensionAPI;
+
+  const result = await gitlabAdapter.getPrByRef(pi, repo, provider, byRef);
+  assert.equal(result.kind === "active" ? result.pr.state : undefined, "closed");
+});
