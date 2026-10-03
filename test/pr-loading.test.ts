@@ -258,7 +258,7 @@ function execMock(tool: string, args: string[]) {
             repository: {
               pullRequest: {
                 reviewThreads: { nodes: [] },
-                reviews: { nodes: [{ state: "APPROVED" }] },
+                latestOpinionatedReviews: { nodes: [{ state: "APPROVED" }] },
               },
             },
           },
