@@ -131,54 +131,54 @@ export function isGitLabHost(host: string): boolean {
   return host.toLowerCase().includes("gitlab");
 }
 
+// SSH-over-HTTPS endpoints that serve the same repos as the main host.
+const SSH_HOST_ALIASES: Record<string, string> = {
+  "ssh.github.com": "github.com",
+  "altssh.gitlab.com": "gitlab.com",
+};
+
 export function parseGitRemote(remoteUrl: string): ParsedGitRemote | undefined {
-  const httpsMatch = remoteUrl.match(/^(https?):\/\/([^/]+)\/(.+?)(?:\.git)?\/?$/i);
+  const value = remoteUrl.trim();
+
+  // Userinfo (user:token@) is dropped so credentials never reach the host,
+  // CLI arguments or tool output.
+  const httpsMatch = value.match(/^(https?):\/\/(?:[^@/]+@)?([^/]+)\/(.+?)\/?$/i);
   if (httpsMatch) {
-    const protocol = httpsMatch[1];
-    const host = httpsMatch[2];
-    const rawPath = httpsMatch[3];
-    if (!protocol || !host || !rawPath) return undefined;
-
-    const fullPath = stripGitSuffix(rawPath);
-    return {
-      host,
-      fullPath,
-      repoRef: `${host}/${fullPath}`,
-      webUrl: `${protocol}://${host}/${fullPath}`,
-    };
+    const [, protocol, host, rawPath] = httpsMatch;
+    return protocol && host && rawPath ? buildRemote(host, rawPath, protocol) : undefined;
   }
 
-  const sshUrlMatch = remoteUrl.match(/^ssh:\/\/git@([^/:]+)(?::\d+)?\/(.+?)(?:\.git)?\/?$/i);
+  const sshUrlMatch = value.match(/^(?:git\+)?ssh:\/\/(?:[^@/]+@)?([^/:]+)(?::\d+)?\/(.+?)\/?$/i);
   if (sshUrlMatch) {
-    const host = sshUrlMatch[1];
-    const rawPath = sshUrlMatch[2];
-    if (!host || !rawPath) return undefined;
-
-    const fullPath = stripGitSuffix(rawPath);
-    return {
-      host,
-      fullPath,
-      repoRef: `${host}/${fullPath}`,
-      webUrl: `https://${host}/${fullPath}`,
-    };
+    const [, host, rawPath] = sshUrlMatch;
+    return host && rawPath ? buildRemote(normalizeSshHost(host), rawPath, "https") : undefined;
   }
 
-  const sshMatch = remoteUrl.match(/^git@([^:/]+):([^\s]+?)(?:\.git)?\/?$/i);
-  if (sshMatch) {
-    const host = sshMatch[1];
-    const rawPath = sshMatch[2];
-    if (!host || !rawPath) return undefined;
-
-    const fullPath = stripGitSuffix(rawPath);
-    return {
-      host,
-      fullPath,
-      repoRef: `${host}/${fullPath}`,
-      webUrl: `https://${host}/${fullPath}`,
-    };
+  // scp-like syntax: user@host:path, with any user (GitHub EMU uses org-123@).
+  const scpMatch = value.match(/^[^@/\s:]+@([^:/\s]+):([^\s]+?)\/?$/);
+  if (scpMatch) {
+    const [, host, rawPath] = scpMatch;
+    return host && rawPath ? buildRemote(normalizeSshHost(host), rawPath, "https") : undefined;
   }
 
   return undefined;
+}
+
+function buildRemote(rawHost: string, rawPath: string, protocol: string): ParsedGitRemote {
+  // Hostnames are case-insensitive; URL parsing lowercases them too, which
+  // keeps remotes comparable with PR URL references.
+  const host = rawHost.toLowerCase();
+  const fullPath = stripGitSuffix(rawPath);
+  return {
+    host,
+    fullPath,
+    repoRef: `${host}/${fullPath}`,
+    webUrl: `${protocol.toLowerCase()}://${host}/${fullPath}`,
+  };
+}
+
+function normalizeSshHost(host: string): string {
+  return SSH_HOST_ALIASES[host.toLowerCase()] ?? host;
 }
 
 async function resolveEffectiveRemote(

@@ -256,6 +256,36 @@ void test("parseGitRemote supports https and ssh remotes", () => {
     repoRef: "gitlab.example.com/group/project",
     webUrl: "https://gitlab.example.com/group/project",
   });
+  const tokenRemote = parseGitRemote(
+    "https://oauth2:glpat-SECRET@gitlab.example.com/group/project.git"
+  );
+  assert.deepEqual(tokenRemote, {
+    host: "gitlab.example.com",
+    fullPath: "group/project",
+    repoRef: "gitlab.example.com/group/project",
+    webUrl: "https://gitlab.example.com/group/project",
+  });
+  assert.doesNotMatch(JSON.stringify(tokenRemote), /SECRET|oauth2/);
+
+  assert.deepEqual(parseGitRemote("org-123@github.com:octo/repo.git"), {
+    host: "github.com",
+    fullPath: "octo/repo",
+    repoRef: "github.com/octo/repo",
+    webUrl: "https://github.com/octo/repo",
+  });
+
+  assert.deepEqual(parseGitRemote("ssh://deploy@GitLab.Example.com/group/sub/project"), {
+    host: "gitlab.example.com",
+    fullPath: "group/sub/project",
+    repoRef: "gitlab.example.com/group/sub/project",
+    webUrl: "https://gitlab.example.com/group/sub/project",
+  });
+
+  assert.equal(
+    parseGitRemote("ssh://git@ssh.github.com:443/octo/repo.git")?.repoRef,
+    "github.com/octo/repo"
+  );
+  assert.equal(parseGitRemote("/srv/git/project.git"), undefined);
 });
 
 void test("getDiffStats parses shortstat output", async () => {
