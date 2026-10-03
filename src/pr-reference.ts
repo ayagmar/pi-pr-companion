@@ -40,35 +40,38 @@ function parsePrUrlReference(value: string): ParsedPrReference | undefined {
     return undefined;
   }
 
-  const githubMatch = url.pathname.match(/^\/([^/]+\/[^/]+)\/pull\/(\d+)\/?$/);
+  // Copied links often point at a PR tab (/files, /commits, /checks, /diffs, ...).
+  const githubMatch = url.pathname.match(/^\/([^/]+\/[^/]+)\/pull\/(\d+)(?:\/.*)?$/);
   if (githubMatch) {
     const fullPath = githubMatch[1];
     const iid = Number.parseInt(githubMatch[2] ?? "", 10);
     if (!fullPath || !Number.isFinite(iid)) return undefined;
 
+    const remote = buildRemote(url, fullPath);
     return {
       kind: "url",
       provider: "github",
       iid,
       ref: `#${iid}`,
-      url: normalizeUrl(url),
-      remote: buildRemote(url, fullPath),
+      url: `${remote.webUrl}/pull/${iid}`,
+      remote,
     };
   }
 
-  const gitlabMatch = url.pathname.match(/^\/(.+)\/-\/merge_requests\/(\d+)\/?$/);
+  const gitlabMatch = url.pathname.match(/^\/(.+?)\/-\/merge_requests\/(\d+)(?:\/.*)?$/);
   if (gitlabMatch) {
     const fullPath = gitlabMatch[1];
     const iid = Number.parseInt(gitlabMatch[2] ?? "", 10);
     if (!fullPath || !Number.isFinite(iid)) return undefined;
 
+    const remote = buildRemote(url, fullPath);
     return {
       kind: "url",
       provider: "gitlab",
       iid,
       ref: `!${iid}`,
-      url: normalizeUrl(url),
-      remote: buildRemote(url, fullPath),
+      url: `${remote.webUrl}/-/merge_requests/${iid}`,
+      remote,
     };
   }
 
@@ -83,13 +86,6 @@ function buildRemote(url: URL, fullPath: string): ParsedGitRemote {
     repoRef: `${url.host}/${normalizedFullPath}`,
     webUrl: `${url.protocol}//${url.host}/${normalizedFullPath}`,
   };
-}
-
-function normalizeUrl(url: URL): string {
-  const normalized = new URL(url.toString());
-  normalized.search = "";
-  normalized.hash = "";
-  return normalized.toString().replace(/\/$/, "");
 }
 
 function stripGitSuffix(value: string): string {
