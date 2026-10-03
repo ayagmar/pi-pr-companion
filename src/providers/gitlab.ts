@@ -1,3 +1,4 @@
+import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isHostEnabled } from "../config.js";
 import {
   buildCheckSummary,
@@ -151,14 +152,7 @@ export function getGitLabPrSeverity(pr: PrDetails): "success" | "pending" | "blo
 }
 
 async function getPrByIid(
-  pi: {
-    exec: (
-      command: string,
-      args: string[]
-    ) =>
-      | Promise<{ code: number; stdout: string; stderr: string }>
-      | { code: number; stdout: string; stderr: string };
-  },
+  pi: Pick<ExtensionAPI, "exec">,
   provider: ProviderConfig,
   host: string,
   repoRef: string,
