@@ -374,11 +374,11 @@ async function handleStatus(
 async function handleRefresh(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
   try {
     const message = await runWithLoader(ctx, "Refreshing PR status...", async () => {
-      const snapshot = await getRepoStatusSnapshot(pi, ctx.cwd);
-      clearRepoStatusCache(snapshot.repo?.repoRoot);
+      clearRepoStatusCache();
+      // One forced lookup feeds both the footer and the status message.
       const refreshed = await getRepoStatusSnapshot(pi, ctx.cwd, { force: true });
       applyStatusLine(ctx, refreshed);
-      const resolved = await resolvePrContext(pi, ctx.cwd);
+      const resolved = snapshotToResolvedContext(refreshed);
       return `Refreshed PR status.\n\n${buildResolvedPrStatusMessage(ctx.cwd, resolved)}`;
     });
     notify(ctx, message);
@@ -1507,6 +1507,12 @@ function applyStatusLine(
       })
     : undefined;
   ctx.ui.setStatus(STATUS_KEY, snapshot.hidden ? undefined : statusText);
+}
+
+function snapshotToResolvedContext(snapshot: RepoStatusSnapshot): ResolvedPrContext {
+  const { reason, ...rest } = snapshot;
+  // The footer hides "no PR"; the status message reports it.
+  return { ...rest, reason: reason === "no-pr-hidden" ? "visible" : reason };
 }
 
 function buildResolvedPrStatusMessage(cwd: string, resolved: ResolvedPrContext): string {
