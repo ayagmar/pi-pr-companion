@@ -1020,13 +1020,15 @@ async function openDisplaySettings(
       continue;
     }
 
-    const value = await ctx.ui.input("Stale PR threshold (days)", String(config.stalePrDays));
-    if (value === undefined) {
+    const stalePrDays = await promptPositiveInteger(
+      ctx,
+      "Stale PR threshold (days)",
+      config.stalePrDays
+    );
+    if (stalePrDays === undefined) {
       continue;
     }
-
-    const stalePrDays = Number.parseInt(value.trim(), 10);
-    if (!Number.isFinite(stalePrDays) || stalePrDays < 1) {
+    if (stalePrDays === "invalid") {
       notify(ctx, "Stale PR threshold must be a positive number.", "error");
       continue;
     }
@@ -1038,6 +1040,33 @@ async function openDisplaySettings(
       `Stale PR threshold set to ${stalePrDays} day${stalePrDays === 1 ? "" : "s"}.`
     );
   }
+}
+
+/**
+ * Ask for a positive integer. pi's TUI input does not render the placeholder,
+ * so the current value goes in the title and an empty answer keeps it.
+ * Returns undefined when cancelled or left empty.
+ */
+async function promptPositiveInteger(
+  ctx: ExtensionCommandContext,
+  title: string,
+  current: number
+): Promise<number | "invalid" | undefined> {
+  const value = await ctx.ui.input(
+    `${title} · current ${current} (empty keeps it)`,
+    String(current)
+  );
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(trimmed, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return "invalid";
+  }
+
+  return parsed;
 }
 
 async function openReviewSettings(
@@ -1108,13 +1137,15 @@ async function openAdvancedSettings(
   ctx: ExtensionCommandContext,
   config: PrCompanionConfig
 ): Promise<PrCompanionConfig> {
-  const value = await ctx.ui.input("Status cache TTL in milliseconds", String(config.cacheTtlMs));
-  if (value === undefined) {
+  const cacheTtlMs = await promptPositiveInteger(
+    ctx,
+    "Status cache TTL in milliseconds",
+    config.cacheTtlMs
+  );
+  if (cacheTtlMs === undefined) {
     return config;
   }
-
-  const cacheTtlMs = Number.parseInt(value.trim(), 10);
-  if (!Number.isFinite(cacheTtlMs) || cacheTtlMs < 1) {
+  if (cacheTtlMs === "invalid") {
     notify(ctx, "Status cache TTL must be a positive number.", "error");
     return config;
   }
