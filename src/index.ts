@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import {
   BorderedLoader,
@@ -1205,15 +1206,15 @@ async function openProviderSettings(
       continue;
     }
 
-    const edited = await ctx.ui.editor(
+    const hosts = await editJsonObject(
+      ctx,
       `${kind} hosts JSON`,
       JSON.stringify(provider.hosts, null, 2)
     );
-    if (edited === undefined) {
+    if (hosts === undefined) {
       continue;
     }
 
-    const hosts = JSON.parse(edited) as Record<string, unknown>;
     config = await saveConfigChange(
       pi,
       ctx,
@@ -1317,13 +1318,56 @@ function describeHosts(hosts: Record<string, { enabled?: boolean }>): string {
 }
 
 async function editRawConfig(pi: ExtensionAPI, ctx: ExtensionCommandContext): Promise<void> {
-  const currentConfig = await loadConfig();
-  const edited = await ctx.ui.editor("Edit pi-pr-companion config", serializeConfig(currentConfig));
+  const edited = await editJsonObject(
+    ctx,
+    "Edit pi-pr-companion config",
+    await readEditableConfig()
+  );
   if (edited === undefined) return;
 
-  const nextConfig = normalizeConfig(JSON.parse(edited) as Record<string, unknown>);
-  await saveConfigAndRefresh(pi, ctx, nextConfig);
+  await saveConfigAndRefresh(pi, ctx, normalizeConfig(edited));
   notify(ctx, `Saved config to ${getConfigPath()}`);
+}
+
+/**
+ * The config as editable JSON. When the file holds invalid JSON, edit its raw
+ * text instead, so `/pr config edit` can repair it.
+ */
+async function readEditableConfig(): Promise<string> {
+  try {
+    return serializeConfig(await loadConfig());
+  } catch (error) {
+    const raw = await readFile(getConfigPath(), "utf8").catch(() => undefined);
+    if (raw === undefined) throw error;
+    return raw;
+  }
+}
+
+/**
+ * Open an editor until it holds a JSON object or is cancelled. Invalid input
+ * is reported and shown again for fixing instead of aborting the settings flow.
+ */
+async function editJsonObject(
+  ctx: ExtensionCommandContext,
+  title: string,
+  initialText: string
+): Promise<Record<string, unknown> | undefined> {
+  let text = initialText;
+  while (true) {
+    const edited = await ctx.ui.editor(title, text);
+    if (edited === undefined) return undefined;
+
+    try {
+      const value = JSON.parse(edited) as unknown;
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        return value as Record<string, unknown>;
+      }
+      notify(ctx, `${title}: expected a JSON object.`, "error");
+    } catch (error) {
+      notify(ctx, toErrorMessage(error, `${title}: invalid JSON`), "error");
+    }
+    text = edited;
+  }
 }
 
 async function setStatusBarVisibility(
