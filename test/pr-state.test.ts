@@ -1,9 +1,9 @@
-import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import test from "node:test";
+import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { getRepoStatusSnapshot, listActivePrsForCurrentRepo } from "../src/pr-state.js";
 
 void test("listActivePrsForCurrentRepo works even when current branch is ignored", async () => {

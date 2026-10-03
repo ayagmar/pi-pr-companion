@@ -1,15 +1,15 @@
-import type {
-  ActivePrLookup,
-  ParsedGitRemote,
-  PrCompanionConfig,
-  ProviderKind,
-  RepoContext,
-} from "../types.js";
-import { isGitHubHost, isGitLabHost } from "../git.js";
 import { getProviderConfig } from "../config.js";
-import { githubAdapter, getGitHubPrSeverity } from "./github.js";
-import { gitlabAdapter, getGitLabPrSeverity } from "./gitlab.js";
-import type { ProviderAdapter } from "./types.js";
+import { isGitHubHost, isGitLabHost } from "../git.js";
+import {
+  type ActivePrLookup,
+  type ParsedGitRemote,
+  type PrCompanionConfig,
+  type ProviderKind,
+  type RepoContext,
+} from "../types.js";
+import { getGitHubPrSeverity, githubAdapter } from "./github.js";
+import { getGitLabPrSeverity, gitlabAdapter } from "./gitlab.js";
+import { type ProviderAdapter } from "./types.js";
 
 const providerAdapters: Record<ProviderKind, ProviderAdapter> = {
   gitlab: gitlabAdapter,

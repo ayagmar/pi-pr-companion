@@ -1,4 +1,4 @@
-import type { ParsedGitRemote, ParsedPrReference } from "./types.js";
+import { type ParsedGitRemote, type ParsedPrReference } from "./types.js";
 
 export function parsePrReference(raw: string): ParsedPrReference | undefined {
   const value = raw.trim();

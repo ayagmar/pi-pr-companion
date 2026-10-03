@@ -1,6 +1,6 @@
-import test from "node:test";
 import assert from "node:assert/strict";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import test from "node:test";
+import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import prCompanionExtension from "../src/index.js";
 
 interface RegisteredCommand {
@@ -205,7 +205,7 @@ void test("end-review can return with a structured fix queue", async () => {
     options: { summarize: boolean; customInstructions?: string; replaceInstructions?: boolean };
   }[] = [];
   let command: RegisteredCommand | undefined;
-  let nextSelectChoice: string | undefined = "Return with fix queue";
+  const nextSelectChoice: string | undefined = "Return with fix queue";
   let leafId = "entry-2";
   let entryCounter = 2;
 

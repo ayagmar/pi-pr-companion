@@ -1,6 +1,6 @@
 import path from "node:path";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import type { ParsedGitRemote, RepoContext, RepoDiffStats } from "./types.js";
+import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { type ParsedGitRemote, type RepoContext, type RepoDiffStats } from "./types.js";
 
 const DEFAULT_REMOTE_NAME = "origin";
 

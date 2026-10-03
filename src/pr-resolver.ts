@@ -1,10 +1,10 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isIgnoredBranch, loadConfig } from "./config.js";
 import { getDiffStats, resolveRepoContext } from "./git.js";
 import { evaluatePrReadiness } from "./pr-readiness.js";
 import { parsePrReference } from "./pr-reference.js";
 import { getProviderAdapter, getProviderConfigForRemote } from "./providers/index.js";
-import type { PrLookupResult, RepoContext, ResolvedPrContext } from "./types.js";
+import { type PrLookupResult, type RepoContext, type ResolvedPrContext } from "./types.js";
 
 export async function resolvePrContext(
   pi: ExtensionAPI,

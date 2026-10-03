@@ -6,10 +6,9 @@ import {
   type ExtensionCommandContext,
   type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { Container, SelectList, Text, type SelectItem } from "@earendil-works/pi-tui";
+import { Container, type SelectItem, SelectList, Text } from "@earendil-works/pi-tui";
 import { formatBranchSwitchSuccessMessage } from "./branch-switch.js";
 import { buildArgumentCompletions, buildHelpText, parseSubcommand } from "./commands.js";
-import { evaluatePrReadiness } from "./pr-readiness.js";
 import {
   getConfigPath,
   getProviderConfig,
@@ -24,23 +23,28 @@ import {
   setStatusBarStyle,
 } from "./config.js";
 import {
+  COMMAND_NAME,
   GET_PR_CONTEXT_TOOL_NAME,
   LIST_REPO_PRS_TOOL_NAME,
-  COMMAND_NAME,
   REVIEW_PROMPT_NAME,
   STATUS_KEY,
   SWITCH_PR_BRANCH_TOOL_NAME,
 } from "./constants.js";
-import { formatPickerEntry, buildDashboardTitle } from "./pr-display.js";
 import { hasDirtyWorktree, switchToBranch } from "./git.js";
-import { resolvePrContext, canSwitchResolvedPr, getResolvedPrErrorMessage } from "./pr-resolver.js";
+import { buildDashboardTitle, formatPickerEntry } from "./pr-display.js";
+import { evaluatePrReadiness } from "./pr-readiness.js";
+import { canSwitchResolvedPr, getResolvedPrErrorMessage, resolvePrContext } from "./pr-resolver.js";
 import {
-  describePrActivity,
   clearRepoStatusCache,
+  describePrActivity,
   formatStatusText,
   getRepoStatusSnapshot,
   listActivePrsForCurrentRepo,
 } from "./pr-state.js";
+import {
+  findProjectReviewGuidelinesPath,
+  loadProjectReviewGuidelines,
+} from "./review-guidelines.js";
 import {
   applyReviewSessionState,
   endReviewSession,
@@ -48,18 +52,14 @@ import {
   startReviewSession,
 } from "./review-session.js";
 import {
-  findProjectReviewGuidelinesPath,
-  loadProjectReviewGuidelines,
-} from "./review-guidelines.js";
-import type {
-  PrCompanionConfig,
-  PrDetails,
-  PrLookupResult,
-  PrSummary,
-  RepoStatusSnapshot,
-  ResolvedPrContext,
-  ReviewSessionState,
-  StatusBarStyle,
+  type PrCompanionConfig,
+  type PrDetails,
+  type PrLookupResult,
+  type PrSummary,
+  type RepoStatusSnapshot,
+  type ResolvedPrContext,
+  type ReviewSessionState,
+  type StatusBarStyle,
 } from "./types.js";
 
 type ConfigAction = "edit" | "show" | "statusbar" | "footer" | "coverage" | "blockers";

@@ -1,12 +1,12 @@
-import type {
-  PrLookupResult,
-  PrRefReference,
-  PrSummary,
-  PrUrlReference,
-  ProviderConfig,
-  RepoContext,
+import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import {
+  type PrLookupResult,
+  type ProviderConfig,
+  type PrRefReference,
+  type PrSummary,
+  type PrUrlReference,
+  type RepoContext,
 } from "../types.js";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 export interface ProviderAdapter {
   getPrByBranch(

@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { formatBranchSwitchSuccessMessage } from "../src/branch-switch.js";
 
 void test("formatBranchSwitchSuccessMessage distinguishes switched without update", () => {

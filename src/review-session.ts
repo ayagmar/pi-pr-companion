@@ -1,11 +1,11 @@
+import { type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { truncateToWidth } from "@earendil-works/pi-tui";
 import {
   REVIEW_SESSION_ANCHOR_TYPE,
   REVIEW_SESSION_STATE_TYPE,
   REVIEW_WIDGET_KEY,
 } from "./constants.js";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth } from "@earendil-works/pi-tui";
-import type { ReviewSessionState } from "./types.js";
+import { type ReviewSessionState } from "./types.js";
 
 export function getReviewSessionState(ctx: ExtensionContext): ReviewSessionState | undefined {
   let state: ReviewSessionState | undefined;
