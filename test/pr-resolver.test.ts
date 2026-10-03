@@ -74,3 +74,23 @@ void test("/pr status #ref keeps the PR's diff stats when another branch is chec
     else process.env.PI_PR_COMPANION_CONFIG = previous;
   }
 });
+
+void test("a detached HEAD still resolves the repo for PR refs", async () => {
+  const previous = process.env.PI_PR_COMPANION_CONFIG;
+  process.env.PI_PR_COMPANION_CONFIG = "/nonexistent/pi-pr-companion-settings.json";
+  try {
+    const calls: string[] = [];
+    const current = await resolvePrContext(createPi("", calls), "/workspace/repo");
+    assert.equal(current.reason, "detached-head");
+    assert.equal(current.repo?.repoRoot, "/workspace/repo");
+    assert.match(current.errorMessage ?? "", /HEAD is detached/);
+    assert.equal(calls.filter((call) => call.startsWith("gh ")).length, 0);
+    assert.equal(calls.filter((call) => call.includes("config --get branch.")).length, 0);
+
+    const byRef = await resolvePrContext(createPi("", []), "/workspace/repo", "#42");
+    assert.equal(byRef.result?.kind, "active");
+  } finally {
+    if (previous === undefined) delete process.env.PI_PR_COMPANION_CONFIG;
+    else process.env.PI_PR_COMPANION_CONFIG = previous;
+  }
+});

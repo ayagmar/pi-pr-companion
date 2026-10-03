@@ -28,6 +28,17 @@ export async function resolvePrContext(
       return { config, provider, repo, hidden: true, reason: "ignored-branch" };
     }
 
+    if (!repo.branch) {
+      return {
+        config,
+        provider,
+        repo,
+        hidden: true,
+        reason: "detached-head",
+        errorMessage: "HEAD is detached. Check out a branch or pass a PR ref or URL.",
+      };
+    }
+
     const result = await enrichResult(
       pi,
       repo,

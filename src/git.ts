@@ -11,8 +11,9 @@ export async function resolveRepoContext(
   const repoRoot = await runGitString(pi, cwd, ["rev-parse", "--show-toplevel"]);
   if (!repoRoot) return undefined;
 
-  const branch = await runGitString(pi, repoRoot, ["branch", "--show-current"]);
-  if (!branch) return undefined;
+  // Empty on a detached HEAD: the repo still resolves, there is just no
+  // current branch to look a PR up by.
+  const branch = (await runGitString(pi, repoRoot, ["branch", "--show-current"])) ?? "";
 
   const remoteSelection = await resolveEffectiveRemote(pi, repoRoot, branch);
   if (!remoteSelection) return undefined;
@@ -186,11 +187,9 @@ async function resolveEffectiveRemote(
   repoRoot: string,
   branch: string
 ): Promise<{ remoteName: string; remoteUrl: string } | undefined> {
-  const upstreamRemoteName = await runGitString(pi, repoRoot, [
-    "config",
-    "--get",
-    `branch.${branch}.remote`,
-  ]);
+  const upstreamRemoteName = branch
+    ? await runGitString(pi, repoRoot, ["config", "--get", `branch.${branch}.remote`])
+    : undefined;
   if (upstreamRemoteName) {
     const upstreamRemoteUrl = await runGitString(pi, repoRoot, [
       "remote",
