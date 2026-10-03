@@ -64,6 +64,10 @@ export async function getRepoStatusSnapshot(
     return { config, provider, repo, hidden: true, reason: "ignored-branch" };
   }
 
+  if (!repo.branch) {
+    return { config, provider, repo, hidden: true, reason: "detached-head" };
+  }
+
   const result = await detectForRepo(
     repo.repoRoot,
     repo.branch,

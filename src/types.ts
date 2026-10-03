@@ -32,6 +32,7 @@ export interface PrCompanionConfig {
 export interface RepoContext {
   cwd: string;
   repoRoot: string;
+  /** Empty when HEAD is detached. */
   branch: string;
   remoteName: string;
   remoteUrl: string;
@@ -187,6 +188,7 @@ export interface RepoStatusSnapshot {
     | "not-git"
     | "unsupported-remote"
     | "ignored-branch"
+    | "detached-head"
     | "unsupported"
     | "no-pr-hidden"
     | "visible";
@@ -205,6 +207,7 @@ export interface ResolvedPrContext {
     | "invalid-reference"
     | "provider-mismatch"
     | "ignored-branch"
+    | "detached-head"
     | "unsupported"
     | "visible";
   errorMessage?: string;
