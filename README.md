@@ -17,7 +17,8 @@ Supports:
 
 ## Requirements
 
-- Pi
+- Pi 1.0.1 or newer (`@earendil-works/pi-coding-agent`)
+- Node.js 22.19.0 or newer
 - `gh` for GitHub repos
 - `glab` for GitLab repos
 - authenticated CLI access to the host you want to use
