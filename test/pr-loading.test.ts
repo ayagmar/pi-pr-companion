@@ -10,6 +10,7 @@ interface RegisteredCommand {
 interface LoadingCommandContext {
   cwd: string;
   hasUI: boolean;
+  mode: "tui" | "rpc";
   ui: {
     notify: (message: string, level?: "info" | "warning" | "error") => void;
     custom: <T>(
@@ -39,80 +40,7 @@ void test("interactive status shows Pi loader before resolving PR status", async
     registerCommand: (_name: string, registered: RegisteredCommand) => {
       command = registered;
     },
-    exec: (tool: string, args: string[]) => {
-      const joined = args.join(" ");
-
-      if (tool === "git") {
-        if (joined.includes("rev-parse --show-toplevel")) return ok("/workspace/repo\n");
-        if (joined.includes("branch --show-current")) return ok("feature/loading\n");
-        if (joined.includes("config --get branch.feature/loading.remote")) return fail("");
-        if (joined.includes("remote get-url origin")) {
-          return ok("https://github.com/octo/repo.git\n");
-        }
-        if (joined.includes("diff --shortstat origin/main...HEAD")) {
-          return ok(" 1 file changed, 3 insertions(+), 1 deletion(-)\n");
-        }
-      }
-
-      if (tool === "gh") {
-        if (joined.includes("pr list") && joined.includes("--head feature/loading")) {
-          return ok(
-            JSON.stringify([
-              {
-                number: 42,
-                title: "feat: loading states",
-                url: "https://github.com/octo/repo/pull/42",
-                headRefName: "feature/loading",
-                baseRefName: "main",
-                updatedAt: "2026-03-20T10:00:00Z",
-                isDraft: false,
-                mergeStateStatus: "CLEAN",
-                reviewDecision: "APPROVED",
-                statusCheckRollup: [{ conclusion: "SUCCESS", name: "ci" }],
-              },
-            ])
-          );
-        }
-
-        if (joined.includes("pr view 42")) {
-          return ok(
-            JSON.stringify({
-              number: 42,
-              title: "feat: loading states",
-              url: "https://github.com/octo/repo/pull/42",
-              headRefName: "feature/loading",
-              baseRefName: "main",
-              updatedAt: "2026-03-20T10:00:00Z",
-              isDraft: false,
-              mergeStateStatus: "CLEAN",
-              reviewDecision: "APPROVED",
-              statusCheckRollup: [{ conclusion: "SUCCESS", name: "ci" }],
-            })
-          );
-        }
-
-        if (joined.includes("api repos/octo/repo/pulls/42/files")) {
-          return ok(JSON.stringify([{ additions: 3, deletions: 1 }]));
-        }
-
-        if (joined.includes("api graphql")) {
-          return ok(
-            JSON.stringify({
-              data: {
-                repository: {
-                  pullRequest: {
-                    reviewThreads: { nodes: [] },
-                    reviews: { nodes: [{ state: "APPROVED" }] },
-                  },
-                },
-              },
-            })
-          );
-        }
-      }
-
-      throw new Error(`Unexpected invocation: ${tool} ${joined}`);
-    },
+    exec: execMock,
   } as unknown as ExtensionAPI;
 
   prCompanionExtension(pi);
@@ -126,6 +54,7 @@ void test("interactive status shows Pi loader before resolving PR status", async
   const ctx: LoadingCommandContext = {
     cwd: "/workspace/repo",
     hasUI: true,
+    mode: "tui",
     ui: {
       notify: (message, level) => {
         notifications.push(level ? { message, level } : { message });
@@ -169,6 +98,181 @@ void test("interactive status shows Pi loader before resolving PR status", async
     globalThis.clearInterval = originalClearInterval;
   }
 });
+
+interface RpcCommandContext {
+  cwd: string;
+  hasUI: boolean;
+  mode: "rpc";
+  ui: {
+    notify: (message: string, level?: "info" | "warning" | "error") => void;
+    select: (title: string, options: string[]) => Promise<string | undefined>;
+    custom: () => Promise<undefined>;
+  };
+}
+
+function createRpcHarness() {
+  const notifications: { message: string; level?: "info" | "warning" | "error" }[] = [];
+  const selects: { title: string; options: string[] }[] = [];
+  let customCalls = 0;
+  let command: { handler: (args: string, ctx: RpcCommandContext) => Promise<void> } | undefined;
+
+  prCompanionExtension({
+    on: () => undefined,
+    registerTool: () => undefined,
+    registerCommand: (_name: string, registered: typeof command) => {
+      command = registered;
+    },
+    exec: execMock,
+  } as unknown as ExtensionAPI);
+
+  // Mirrors pi's RPC UI: dialogs are forwarded, custom components resolve to undefined.
+  const ctx: RpcCommandContext = {
+    cwd: "/workspace/repo",
+    hasUI: true,
+    mode: "rpc",
+    ui: {
+      notify: (message, level) => {
+        notifications.push(level ? { message, level } : { message });
+      },
+      select: (title, options) => {
+        selects.push({ title, options });
+        return Promise.resolve(undefined);
+      },
+      custom: () => {
+        customCalls += 1;
+        return Promise.resolve(undefined);
+      },
+    },
+  };
+
+  return {
+    ctx,
+    notifications,
+    selects,
+    getCommand: () => command,
+    getCustomCalls: () => customCalls,
+  };
+}
+
+void test("RPC status runs without the TUI-only loader", async () => {
+  const harness = createRpcHarness();
+  const command = harness.getCommand();
+  assert.ok(command);
+
+  await command.handler("status", harness.ctx);
+
+  assert.equal(harness.getCustomCalls(), 0);
+  assert.equal(harness.notifications[0]?.level, "info");
+  assert.match(harness.notifications[0]?.message ?? "", /PR: #42/);
+});
+
+void test("RPC active PR picker falls back to the select dialog", async () => {
+  const harness = createRpcHarness();
+  const command = harness.getCommand();
+  assert.ok(command);
+
+  await command.handler("active", harness.ctx);
+
+  assert.equal(harness.getCustomCalls(), 0);
+  assert.equal(harness.selects.length, 1);
+  assert.match(harness.selects[0]?.title ?? "", /Active PRs for current repo · 1 open PR/);
+  assert.match(harness.selects[0]?.options[0] ?? "", /#42/);
+  assert.deepEqual(harness.notifications, []);
+});
+
+function execMock(tool: string, args: string[]) {
+  const joined = args.join(" ");
+
+  if (tool === "git") {
+    if (joined.includes("rev-parse --show-toplevel")) return ok("/workspace/repo\n");
+    if (joined.includes("branch --show-current")) return ok("feature/loading\n");
+    if (joined.includes("config --get branch.feature/loading.remote")) return fail("");
+    if (joined.includes("remote get-url origin")) {
+      return ok("https://github.com/octo/repo.git\n");
+    }
+    if (joined.includes("diff --shortstat origin/main...HEAD")) {
+      return ok(" 1 file changed, 3 insertions(+), 1 deletion(-)\n");
+    }
+  }
+
+  if (tool === "gh") {
+    if (joined.includes("pr list") && joined.includes("--state open")) {
+      return ok(
+        JSON.stringify([
+          {
+            number: 42,
+            title: "feat: loading states",
+            url: "https://github.com/octo/repo/pull/42",
+            headRefName: "feature/loading",
+            baseRefName: "main",
+            updatedAt: "2026-03-20T10:00:00Z",
+            isDraft: false,
+            mergeStateStatus: "CLEAN",
+            reviewDecision: "APPROVED",
+            statusCheckRollup: [{ conclusion: "SUCCESS", name: "ci" }],
+          },
+        ])
+      );
+    }
+
+    if (joined.includes("pr list") && joined.includes("--head feature/loading")) {
+      return ok(
+        JSON.stringify([
+          {
+            number: 42,
+            title: "feat: loading states",
+            url: "https://github.com/octo/repo/pull/42",
+            headRefName: "feature/loading",
+            baseRefName: "main",
+            updatedAt: "2026-03-20T10:00:00Z",
+            isDraft: false,
+            mergeStateStatus: "CLEAN",
+            reviewDecision: "APPROVED",
+            statusCheckRollup: [{ conclusion: "SUCCESS", name: "ci" }],
+          },
+        ])
+      );
+    }
+
+    if (joined.includes("pr view 42")) {
+      return ok(
+        JSON.stringify({
+          number: 42,
+          title: "feat: loading states",
+          url: "https://github.com/octo/repo/pull/42",
+          headRefName: "feature/loading",
+          baseRefName: "main",
+          updatedAt: "2026-03-20T10:00:00Z",
+          isDraft: false,
+          mergeStateStatus: "CLEAN",
+          reviewDecision: "APPROVED",
+          statusCheckRollup: [{ conclusion: "SUCCESS", name: "ci" }],
+        })
+      );
+    }
+
+    if (joined.includes("api repos/octo/repo/pulls/42/files")) {
+      return ok(JSON.stringify([{ additions: 3, deletions: 1 }]));
+    }
+
+    if (joined.includes("api graphql")) {
+      return ok(
+        JSON.stringify({
+          data: {
+            repository: {
+              pullRequest: {
+                reviewThreads: { nodes: [] },
+                reviews: { nodes: [{ state: "APPROVED" }] },
+              },
+            },
+          },
+        })
+      );
+    }
+  }
+
+  throw new Error(`Unexpected invocation: ${tool} ${joined}`);
+}
 
 function ok(stdout: string) {
   return {

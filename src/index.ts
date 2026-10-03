@@ -5,6 +5,9 @@ import {
   type ExtensionAPI,
   type ExtensionCommandContext,
   type ExtensionContext,
+  getSelectListTheme,
+  keyHint,
+  rawKeyHint,
 } from "@earendil-works/pi-coding-agent";
 import { Container, type SelectItem, SelectList, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
@@ -1744,28 +1747,42 @@ async function openPrSelector(
   prs: PrSummary[],
   config: PrCompanionConfig
 ): Promise<string | undefined> {
+  const items: SelectItem[] = prs.map((pr) => ({
+    value: pr.ref,
+    label: formatPickerEntry(pr, config),
+    description: describePrActivity(pr, config),
+  }));
+
+  // Custom components only render in the TUI. RPC clients get the standard
+  // select dialog, which they can forward.
+  if (ctx.mode !== "tui") {
+    const labels = items.map((item) =>
+      item.description ? `${item.label} · ${item.description}` : item.label
+    );
+    const choice = await ctx.ui.select(title, labels);
+    return choice === undefined ? undefined : items[labels.indexOf(choice)]?.value;
+  }
+
   return ctx.ui.custom<string | undefined>((tui, theme, _keybindings, done) => {
     const container = new Container();
     container.addChild(new DynamicBorder((s) => theme.fg("accent", s)));
     container.addChild(new Text(theme.fg("accent", theme.bold(title)), 1, 0));
 
-    const items: SelectItem[] = prs.map((pr) => ({
-      value: pr.ref,
-      label: formatPickerEntry(pr, config),
-      description: describePrActivity(pr, config),
-    }));
-
-    const selectList = new SelectList(items, Math.min(items.length, 10), {
-      selectedPrefix: (text) => theme.fg("accent", text),
-      selectedText: (text) => theme.fg("accent", text),
-      description: (text) => theme.fg("muted", text),
-      scrollInfo: (text) => theme.fg("dim", text),
-      noMatch: (text) => theme.fg("warning", text),
-    });
+    const selectList = new SelectList(items, Math.min(items.length, 10), getSelectListTheme());
     selectList.onSelect = (item) => done(item.value);
     selectList.onCancel = () => done(undefined);
     container.addChild(selectList);
-    container.addChild(new Text(theme.fg("dim", "↑↓ navigate • enter select • esc cancel"), 1, 0));
+    container.addChild(
+      new Text(
+        [
+          rawKeyHint("↑↓", "navigate"),
+          keyHint("tui.select.confirm", "select"),
+          keyHint("tui.select.cancel", "cancel"),
+        ].join("  "),
+        1,
+        0
+      )
+    );
     container.addChild(new DynamicBorder((s) => theme.fg("accent", s)));
 
     return {
@@ -1974,22 +1991,29 @@ function resolveToolCwd(baseCwd: string, value: string | undefined): string {
 type LoaderResult<T> = { ok: true; value: T } | { ok: false; error: unknown };
 
 async function runWithLoader<T>(
-  ctx: Pick<ExtensionCommandContext, "hasUI" | "ui">,
+  ctx: Pick<ExtensionCommandContext, "mode" | "ui">,
   message: string,
   task: () => Promise<T>
 ): Promise<T> {
-  const custom = (ctx.ui as { custom?: ExtensionCommandContext["ui"]["custom"] }).custom;
-  if (!ctx.hasUI || typeof custom !== "function") {
+  // ctx.ui.custom() resolves to undefined without rendering outside the TUI
+  // (RPC included), so only show the loader there.
+  if (ctx.mode !== "tui") {
     return task();
   }
 
-  const result = await custom<LoaderResult<T>>((tui, theme, _keybindings, done) => {
-    const loader = new BorderedLoader(tui, theme, message, { cancellable: false });
-    void task()
-      .then((value) => done({ ok: true, value }))
-      .catch((error) => done({ ok: false, error }));
-    return loader;
-  });
+  const result = await ctx.ui.custom<LoaderResult<T> | undefined>(
+    (tui, theme, _keybindings, done) => {
+      const loader = new BorderedLoader(tui, theme, message, { cancellable: false });
+      void task()
+        .then((value) => done({ ok: true, value }))
+        .catch((error: unknown) => done({ ok: false, error }));
+      return loader;
+    }
+  );
+
+  if (!result) {
+    throw new Error(`${message} did not complete`);
+  }
 
   if (!result.ok) {
     throw result.error;
@@ -1999,15 +2023,15 @@ async function runWithLoader<T>(
 }
 
 function notify(
-  ctx: {
-    hasUI: boolean;
-    ui: { notify: (message: string, level?: "info" | "warning" | "error") => void };
-  },
+  ctx: Pick<ExtensionContext, "hasUI" | "mode" | "ui">,
   message: string,
   level: "info" | "warning" | "error" = "info"
 ): void {
   if (ctx.hasUI) {
     ctx.ui.notify(message, level);
+  } else if (ctx.mode === "json") {
+    // stdout carries the JSON event stream in json mode.
+    console.error(message);
   } else {
     console.log(message);
   }

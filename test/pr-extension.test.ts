@@ -169,3 +169,33 @@ function restoreEnv(name: string, value: string | undefined): void {
     process.env[name] = value;
   }
 }
+
+void test("headless output stays off stdout in json mode", async () => {
+  let handler: ((args: string, ctx: unknown) => Promise<void>) | undefined;
+  prCompanionExtension({
+    on: () => undefined,
+    registerTool: () => undefined,
+    registerCommand: (_name: string, command: { handler: typeof handler }) => {
+      handler = command.handler;
+    },
+  } as unknown as ExtensionAPI);
+  assert.ok(handler);
+
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+  const originalLog = console.log;
+  const originalError = console.error;
+  console.log = (message: string) => stdout.push(message);
+  console.error = (message: string) => stderr.push(message);
+  try {
+    await handler("", { cwd: "/tmp", hasUI: false, mode: "json", ui: {} });
+    await handler("", { cwd: "/tmp", hasUI: false, mode: "print", ui: {} });
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
+  }
+
+  assert.equal(stderr.length, 1, "json mode writes help to stderr");
+  assert.equal(stdout.length, 1, "print mode writes help to stdout");
+  assert.match(stderr[0] ?? "", /\/pr status/);
+});
