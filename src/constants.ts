@@ -27,11 +27,3 @@ export const AUTH_ERROR_PATTERNS = [
   "403",
 ] as const;
 
-export const GITLAB_BLOCKED_PIPELINE_STATUSES = [
-  "failed",
-  "canceled",
-  "skipped",
-  "manual",
-] as const;
-
-export const GITLAB_PENDING_PIPELINE_STATUSES = ["pending", "running", "created"] as const;
