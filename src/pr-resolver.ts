@@ -100,8 +100,7 @@ export async function resolvePrContext(
     const result = await enrichResult(
       pi,
       repo,
-      await getProviderAdapter(provider.kind).getPrByRef(pi, repo, provider, reference),
-      { requireCurrentBranchMatch: false }
+      await getProviderAdapter(provider.kind).getPrByRef(pi, repo, provider, reference)
     );
 
     return {
@@ -139,10 +138,7 @@ export async function resolvePrContext(
     pi,
     repo,
     await getProviderAdapter(provider.kind).getPrByUrl(pi, provider, reference),
-    {
-      requireCurrentBranchMatch: true,
-      allowedRepoRef: reference.remote.repoRef,
-    }
+    { allowedRepoRef: reference.remote.repoRef }
   );
 
   return repo
@@ -169,16 +165,18 @@ async function enrichResult(
   pi: ExtensionAPI,
   repo: RepoContext | undefined,
   result: PrLookupResult,
-  options?: { requireCurrentBranchMatch?: boolean; allowedRepoRef?: string }
+  options?: { allowedRepoRef?: string }
 ): Promise<PrLookupResult> {
   if (result.kind !== "active") {
     return result;
   }
 
+  // Local diff stats describe HEAD, so they only replace the provider's
+  // numbers when the PR branch is the one checked out.
   let pr = result.pr;
   if (
     repo &&
-    (!options?.requireCurrentBranchMatch || repo.branch === result.pr.sourceBranch) &&
+    repo.branch === result.pr.sourceBranch &&
     (!options?.allowedRepoRef || repo.remote.repoRef === options.allowedRepoRef)
   ) {
     const diffStats = await getDiffStats(pi, repo.repoRoot, result.pr.targetBranch, {
