@@ -277,6 +277,98 @@ void test("an older footer refresh that finishes last does not overwrite a newer
   }
 });
 
+async function renderFooterInMode(mode: "tui" | "rpc"): Promise<string | undefined> {
+  const handlers = new Map<string, LifecycleHandler>();
+  const statusUpdates: (string | undefined)[] = [];
+  const pr = {
+    number: 7,
+    title: "feat: colors",
+    url: "https://github.com/octo/repo/pull/7",
+    headRefName: "feature/colors",
+    baseRefName: "main",
+    updatedAt: "2026-03-20T10:00:00Z",
+    isDraft: false,
+    additions: 12,
+    deletions: 3,
+    mergeStateStatus: "CLEAN",
+    reviewDecision: "APPROVED",
+    statusCheckRollup: [{ conclusion: "SUCCESS", name: "ci" }],
+  };
+  const pi = {
+    on: (eventName: string, handler: LifecycleHandler) => {
+      handlers.set(eventName, handler);
+    },
+    registerCommand: () => undefined,
+    registerTool: () => undefined,
+    exec: (command: string, args: string[]) => {
+      const joined = args.join(" ");
+      if (command === "git") {
+        if (joined.includes("rev-parse --show-toplevel")) return Promise.resolve(ok("/w/colors\n"));
+        if (joined.includes("branch --show-current"))
+          return Promise.resolve(ok("feature/colors\n"));
+        if (joined.includes("remote get-url origin")) {
+          return Promise.resolve(ok("https://github.com/octo/repo.git\n"));
+        }
+        return Promise.resolve({ code: 1, stdout: "", stderr: "", killed: false });
+      }
+      if (joined.includes("pr list")) return Promise.resolve(ok(JSON.stringify([pr])));
+      if (joined.includes("pr view")) return Promise.resolve(ok(JSON.stringify(pr)));
+      if (joined.includes("api graphql")) {
+        return Promise.resolve(
+          ok(
+            JSON.stringify({
+              data: {
+                repository: {
+                  pullRequest: {
+                    reviewThreads: { nodes: [] },
+                    latestOpinionatedReviews: { nodes: [] },
+                  },
+                },
+              },
+            })
+          )
+        );
+      }
+      throw new Error(`Unexpected invocation: ${command} ${joined}`);
+    },
+  } as unknown as ExtensionAPI;
+  const ctx = {
+    cwd: "/w/colors",
+    hasUI: true,
+    mode,
+    sessionManager: { getBranch: () => [] },
+    ui: {
+      setStatus: (_key: string, text: string | undefined) => statusUpdates.push(text),
+      setWidget: () => undefined,
+      theme: { fg: (_color: string, text: string) => `\x1b[38;5;2m${text}\x1b[39m` },
+    },
+  };
+
+  prCompanionExtension(pi);
+  handlers.get("session_start")?.({ type: "session_start" }, ctx);
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  return statusUpdates.at(-1);
+}
+
+void test("the footer status is plain text outside the TUI", async () => {
+  const previousConfigPath = process.env.PI_PR_COMPANION_CONFIG;
+  process.env.PI_PR_COMPANION_CONFIG = "/nonexistent/pi-pr-companion-settings.json";
+  try {
+    const tuiStatus = await renderFooterInMode("tui");
+    assert.match(tuiStatus ?? "", /PR #7/);
+    assert.ok(tuiStatus?.includes("\x1b["), "the TUI footer keeps theme colors");
+
+    const rpcStatus = await renderFooterInMode("rpc");
+    assert.match(rpcStatus ?? "", /PR #7/);
+    assert.match(rpcStatus ?? "", /\+12 -3/);
+    assert.ok(!rpcStatus?.includes("\x1b"), `RPC footer has escapes: ${JSON.stringify(rpcStatus)}`);
+  } finally {
+    restoreEnv("PI_PR_COMPANION_CONFIG", previousConfigPath);
+  }
+});
+
 function ok(stdout: string) {
   return { code: 0, stdout, stderr: "", killed: false };
 }

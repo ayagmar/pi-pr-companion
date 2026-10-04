@@ -1523,7 +1523,7 @@ async function saveConfigAndRefresh(
 let footerWriteSeq = 0;
 
 function beginFooterWrite(): (
-  ctx: Pick<ExtensionContext, "hasUI" | "ui">,
+  ctx: Pick<ExtensionContext, "hasUI" | "mode" | "ui">,
   snapshot: RepoStatusSnapshot
 ) => void {
   footerWriteSeq += 1;
@@ -1534,7 +1534,7 @@ function beginFooterWrite(): (
 }
 
 function applyStatusLine(
-  ctx: Pick<ExtensionContext, "hasUI" | "ui">,
+  ctx: Pick<ExtensionContext, "hasUI" | "mode" | "ui">,
   snapshot: RepoStatusSnapshot
 ): void {
   if (!ctx.hasUI) return;
@@ -1546,7 +1546,8 @@ function applyStatusLine(
 
   const statusText = snapshot.result
     ? formatStatusText(snapshot.result, {
-        theme: ctx.ui.theme,
+        // RPC clients get the status text verbatim, so only the TUI gets colors.
+        ...(ctx.mode === "tui" ? { theme: ctx.ui.theme } : {}),
         style: snapshot.config.statusBarStyle,
         showCoverage: snapshot.config.showCoverageInStatusBar,
         showBlockerHint: snapshot.config.showBlockerHintInStatusBar,
