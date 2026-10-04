@@ -1554,10 +1554,11 @@ function buildResolvedPrStatusMessage(cwd: string, resolved: ResolvedPrContext):
   }
 
   if (!resolved.result) {
+    // Ignored branch or detached HEAD: say why there is no PR.
     return [
       resolved.repo ? `Repo: ${resolved.repo.repoRoot}` : `Cwd: ${cwd}`,
       `Provider: ${resolved.provider.kind}`,
-      "PR: unavailable",
+      getResolvedPrErrorMessage(resolved) ?? "PR: unavailable",
     ].join("\n");
   }
 

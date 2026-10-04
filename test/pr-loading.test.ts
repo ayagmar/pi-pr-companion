@@ -112,7 +112,7 @@ interface RpcCommandContext {
   };
 }
 
-function createRpcHarness() {
+function createRpcHarness(branch = "feature/loading") {
   const notifications: { message: string; level?: "info" | "warning" | "error" }[] = [];
   const selects: { title: string; options: string[] }[] = [];
   const statuses: (string | undefined)[] = [];
@@ -128,7 +128,7 @@ function createRpcHarness() {
     },
     exec: (tool: string, args: string[]) => {
       execCalls.push(`${tool} ${args.join(" ")}`);
-      return execMock(tool, args);
+      return execMock(tool, args, branch);
     },
   } as unknown as ExtensionAPI);
 
@@ -207,13 +207,37 @@ void test("/pr refresh looks the PR up once for both the footer and the message"
   assert.equal(harness.execCalls.filter((call) => call.startsWith("gh api graphql")).length, 1);
 });
 
-function execMock(tool: string, args: string[]) {
+void test("/pr status and /pr refresh say why there is no PR on an ignored branch", async () => {
+  const harness = createRpcHarness("main");
+  const command = harness.getCommand();
+  assert.ok(command);
+
+  await command.handler("status", harness.ctx);
+  await command.handler("refresh", harness.ctx);
+
+  assert.match(harness.notifications[0]?.message ?? "", /Branch is ignored: main$/);
+  assert.match(harness.notifications[1]?.message ?? "", /Branch is ignored: main$/);
+  assert.equal(harness.execCalls.filter((call) => call.startsWith("gh ")).length, 0);
+});
+
+void test("/pr refresh on a detached HEAD says so instead of PR: unavailable", async () => {
+  const harness = createRpcHarness("");
+  const command = harness.getCommand();
+  assert.ok(command);
+
+  await command.handler("refresh", harness.ctx);
+
+  assert.match(harness.notifications[0]?.message ?? "", /HEAD is detached/);
+  assert.doesNotMatch(harness.notifications[0]?.message ?? "", /unavailable/);
+});
+
+function execMock(tool: string, args: string[], branch: string) {
   const joined = args.join(" ");
 
   if (tool === "git") {
     if (joined.includes("rev-parse --show-toplevel")) return ok("/workspace/repo\n");
-    if (joined.includes("branch --show-current")) return ok("feature/loading\n");
-    if (joined.includes("config --get branch.feature/loading.remote")) return fail("");
+    if (joined.includes("branch --show-current")) return ok(`${branch}\n`);
+    if (joined.includes("config --get branch.")) return fail("");
     if (joined.includes("remote get-url origin")) {
       return ok("https://github.com/octo/repo.git\n");
     }
