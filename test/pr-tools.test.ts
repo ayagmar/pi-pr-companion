@@ -495,6 +495,39 @@ void test("switch_pr_branch uses the shared switch path and blocks on dirty work
   assert.equal(result.isError, true, "failed switches must be reported as tool errors");
 });
 
+void test("get_pr_context forwards its abort signal and stops once cancelled", async () => {
+  const tools = new Map<string, RegisteredTool>();
+  const controller = new AbortController();
+  const calls: { command: string; signal?: AbortSignal }[] = [];
+  const pi = {
+    on: () => undefined,
+    registerCommand: () => undefined,
+    registerTool: (tool: RegisteredTool) => {
+      tools.set(tool.name, tool);
+    },
+    exec: (command: string, _args: string[], options?: { signal?: AbortSignal }) => {
+      calls.push(options?.signal ? { command, signal: options.signal } : { command });
+      // The user cancels while the first git call runs; pi kills the process.
+      controller.abort();
+      return Promise.resolve({ code: 1, stdout: "", stderr: "", killed: true });
+    },
+  } as unknown as ExtensionAPI;
+
+  prCompanionExtension(pi);
+  const getPrContext = tools.get("get_pr_context");
+  assert.ok(getPrContext);
+  if (!getPrContext) {
+    return;
+  }
+
+  await assert.rejects(
+    getPrContext.execute("tool-4", {}, controller.signal, undefined, { cwd: "/workspace/repo" }),
+    { name: "AbortError" }
+  );
+  assert.equal(calls.length, 1, "no further git/gh calls run after the abort");
+  assert.equal(calls[0]?.signal, controller.signal);
+});
+
 function ok(stdout: string) {
   return {
     code: 0,

@@ -54,6 +54,7 @@ import {
   startReviewSession,
 } from "./review-session.js";
 import {
+  type ExecApi,
   type PrCompanionConfig,
   type PrDetails,
   type PrLookupResult,
@@ -205,9 +206,10 @@ function registerTools(pi: ExtensionAPI): void {
     ],
     parameters: PR_CONTEXT_SCHEMA,
     annotations: { readOnlyHint: true, openWorldHint: true },
-    execute: async (_toolCallId, params, _signal, _onUpdate, ctx) => {
+    execute: async (_toolCallId, params, signal, _onUpdate, ctx) => {
+      const exec = bindAbortSignal(pi, signal);
       const cwd = resolveToolCwd(ctx.cwd, params.cwd);
-      const resolved = await resolvePrContext(pi, cwd, params.reference);
+      const resolved = await resolvePrContext(exec, cwd, params.reference);
       const payload = await buildToolPrContextPayload(cwd, resolved);
       return {
         content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
@@ -226,9 +228,10 @@ function registerTools(pi: ExtensionAPI): void {
     ],
     parameters: OPTIONAL_CWD_SCHEMA,
     annotations: { readOnlyHint: true, openWorldHint: true },
-    execute: async (_toolCallId, params, _signal, _onUpdate, ctx) => {
+    execute: async (_toolCallId, params, signal, _onUpdate, ctx) => {
+      const exec = bindAbortSignal(pi, signal);
       const cwd = resolveToolCwd(ctx.cwd, params.cwd);
-      const listed = await listActivePrsForCurrentRepo(pi, cwd);
+      const listed = await listActivePrsForCurrentRepo(exec, cwd);
       const payload = {
         cwd,
         repoRoot: listed.snapshot.repo?.repoRoot,
@@ -256,9 +259,10 @@ function registerTools(pi: ExtensionAPI): void {
     ],
     parameters: SWITCH_PR_SCHEMA,
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-    execute: async (_toolCallId, params, _signal, _onUpdate, ctx) => {
+    execute: async (_toolCallId, params, signal, _onUpdate, ctx) => {
+      const exec = bindAbortSignal(pi, signal);
       const cwd = resolveToolCwd(ctx.cwd, params.cwd);
-      const resolved = await resolvePrContext(pi, cwd, params.reference);
+      const resolved = await resolvePrContext(exec, cwd, params.reference);
       if (!resolved.repo || !resolved.result || resolved.result.kind !== "active") {
         const message = getResolvedPrErrorMessage(resolved) ?? "PR lookup failed";
         return {
@@ -277,7 +281,7 @@ function registerTools(pi: ExtensionAPI): void {
         };
       }
 
-      if (await hasDirtyWorktree(pi, resolved.repo.repoRoot)) {
+      if (await hasDirtyWorktree(exec, resolved.repo.repoRoot)) {
         const message = `Dirty worktree: ${resolved.repo.repoRoot}`;
         return {
           content: [{ type: "text", text: message }],
@@ -286,13 +290,11 @@ function registerTools(pi: ExtensionAPI): void {
         };
       }
 
-      const result = await switchToBranch(
-        pi,
-        resolved.repo.repoRoot,
-        resolved.result.pr.sourceBranch,
-        { remoteName: resolved.repo.remoteName }
-      );
-      clearRepoStatusCache(resolved.repo.repoRoot);
+      const repoRoot = resolved.repo.repoRoot;
+      // A cancelled switch may still have changed the branch.
+      const result = await switchToBranch(exec, repoRoot, resolved.result.pr.sourceBranch, {
+        remoteName: resolved.repo.remoteName,
+      }).finally(() => clearRepoStatusCache(repoRoot));
       return {
         content: [{ type: "text", text: result.message }],
         details: result,
@@ -2074,6 +2076,23 @@ function describeLookupError(result: PrLookupResult): string {
     case "active":
       return result.pr.ref;
   }
+}
+
+/**
+ * Run a tool's git/gh/glab calls with its abort signal, so cancelling the
+ * tool stops them instead of waiting for each call to finish or time out.
+ */
+function bindAbortSignal(pi: ExecApi, signal: AbortSignal | undefined): ExecApi {
+  if (!signal) return pi;
+
+  return {
+    exec: async (command, args, options) => {
+      signal.throwIfAborted();
+      const result = await pi.exec(command, args, { ...options, signal });
+      signal.throwIfAborted();
+      return result;
+    },
+  };
 }
 
 function resolveToolCwd(baseCwd: string, value: string | undefined): string {

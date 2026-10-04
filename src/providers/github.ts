@@ -1,8 +1,8 @@
-import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isHostEnabled } from "../config.js";
 import { PR_LIST_LIMIT } from "../constants.js";
 import { buildCheckSummary, normalizeCheckStatus, normalizePrState } from "../pr-normalize.js";
 import {
+  type ExecApi,
   type PrApprovalSummary,
   type PrDetails,
   type PrLookupResult,
@@ -198,7 +198,7 @@ export function getGitHubPrSeverity(pr: PrDetails): "success" | "pending" | "blo
 }
 
 async function getPrByNumber(
-  pi: Pick<ExtensionAPI, "exec">,
+  pi: ExecApi,
   provider: ProviderConfig,
   host: string,
   repoRef: string,

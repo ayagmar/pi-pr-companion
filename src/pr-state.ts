@@ -1,4 +1,4 @@
-import { type ExtensionAPI, type Theme } from "@earendil-works/pi-coding-agent";
+import { type Theme } from "@earendil-works/pi-coding-agent";
 import { isIgnoredBranch, loadConfig } from "./config.js";
 import { getDiffStats, resolveRepoContext } from "./git.js";
 import { formatUpdatedAge, isStalePr, sortPrsForActionability } from "./pr-display.js";
@@ -9,6 +9,7 @@ import {
   getProviderSeverity,
 } from "./providers/index.js";
 import {
+  type ExecApi,
   type PrCompanionConfig,
   type PrLookupResult,
   type ProviderConfig,
@@ -41,7 +42,7 @@ interface StatusTextOptions {
 const cache = new Map<string, CacheEntry>();
 
 export async function getRepoStatusSnapshot(
-  pi: ExtensionAPI,
+  pi: ExecApi,
   cwd: string,
   options?: { force?: boolean }
 ): Promise<RepoStatusSnapshot> {
@@ -141,7 +142,7 @@ export function formatStatusText(
 }
 
 export async function listActivePrsForCurrentRepo(
-  pi: ExtensionAPI,
+  pi: ExecApi,
   cwd: string
 ): Promise<{
   snapshot: RepoStatusSnapshot;
@@ -203,10 +204,7 @@ export function describePrActivity(
   return [hint, stale, age].filter(Boolean).join(" • ");
 }
 
-async function resolveProviderRepoContext(
-  pi: ExtensionAPI,
-  cwd: string
-): Promise<ProviderRepoContext> {
+async function resolveProviderRepoContext(pi: ExecApi, cwd: string): Promise<ProviderRepoContext> {
   const config = await loadConfig();
   const repo = await resolveRepoContext(pi, cwd);
   if (!repo) {
@@ -239,7 +237,7 @@ async function detectForRepo(
 }
 
 async function enrichLookupResult(
-  pi: ExtensionAPI,
+  pi: ExecApi,
   repo: RepoContext,
   result: PrLookupResult
 ): Promise<PrLookupResult> {
