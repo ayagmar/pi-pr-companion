@@ -345,3 +345,13 @@ Releases are cut from GitHub Actions — never from a laptop.
    provenance through npm trusted publishing (OIDC — no npm token stored in the repo).
 
 Preview locally with `pnpm release:dry`.
+
+The first publish of a new package cannot use trusted publishing yet (the package must exist on npm
+first): run the workflow once with `bootstrap: true` and a short-lived, publish-only `NPM_TOKEN`
+repository secret, then configure trusted publishing on npmjs.com (GitHub Actions · repo · workflow
+`release.yml`) and delete the secret. If a run already tagged and created the GitHub release but
+failed at `npm publish`, re-run it with `publish_only: true` (plus `bootstrap: true` for that first
+publish) instead of cutting a new version.
+
+With no release tag yet, `auto` treats the whole history as unreleased, so the `feat!` commit makes
+the first release 1.0.0. Pick `minor` instead to start at 0.2.0.
