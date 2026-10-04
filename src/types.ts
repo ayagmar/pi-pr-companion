@@ -118,6 +118,8 @@ export interface PrSummary {
   threadSummary?: PrThreadSummary;
   approvalSummary?: PrApprovalSummary;
   behindTarget?: string;
+  /** The source branch lives in another repository (a fork), not the PR's repo. */
+  fromFork?: boolean;
   /** Set by detail lookups; list lookups only return open PRs. */
   state?: PrState;
   readiness?: PrReadiness;

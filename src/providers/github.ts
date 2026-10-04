@@ -31,6 +31,7 @@ interface GitHubPullRequestItem {
   additions?: number;
   deletions?: number;
   state?: string;
+  isCrossRepository?: boolean;
 }
 
 interface GitHubStatusCheckRollupItem {
@@ -59,7 +60,7 @@ interface GitHubReviewNode {
 }
 
 const GITHUB_PR_FIELDS =
-  "number,title,url,headRefName,baseRefName,updatedAt,isDraft,mergeStateStatus,reviewDecision,statusCheckRollup";
+  "number,title,url,headRefName,baseRefName,updatedAt,isDraft,mergeStateStatus,reviewDecision,statusCheckRollup,isCrossRepository";
 
 // additions/deletions cover the whole PR. The REST files endpoint returns
 // only the first 30 files unless paginated.
@@ -118,9 +119,11 @@ export const githubAdapter: ProviderAdapter = {
       );
     }
 
-    const activePr = parsePrList(listResult.stdout).sort(
-      (left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt)
-    )[0];
+    // `--head` matches fork PRs whose branch has the same name, so keep only
+    // PRs whose source branch lives in this repo.
+    const activePr = parsePrList(listResult.stdout)
+      .filter((pr) => !pr.fromFork)
+      .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))[0];
     if (!activePr) {
       return { kind: "none", provider: provider.kind };
     }
@@ -356,6 +359,7 @@ function toPrSummary(item: GitHubPullRequestItem): PrSummary | undefined {
     ...(pipelineStatus ? { pipelineStatus } : {}),
     ...(checkSummary.total > 0 ? { checkSummary } : {}),
     ...(reviewDecision ? { approvalSummary: { decision: reviewDecision } } : {}),
+    ...(item.isCrossRepository === true ? { fromFork: true } : {}),
   };
 }
 

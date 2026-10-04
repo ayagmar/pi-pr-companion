@@ -189,11 +189,13 @@ async function enrichResult(
   }
 
   // Local diff stats describe HEAD, so they only replace the provider's
-  // numbers when the PR branch is the one checked out.
+  // numbers when the PR branch is the one checked out. A fork PR's branch is
+  // never the local one, even when the names match.
   let pr = result.pr;
   if (
     repo &&
     repo.branch === result.pr.sourceBranch &&
+    !result.pr.fromFork &&
     (!options?.allowedRepoRef || sameRepoRef(repo.remote.repoRef, options.allowedRepoRef))
   ) {
     const diffStats = await getDiffStats(pi, repo.repoRoot, result.pr.targetBranch, {
@@ -248,14 +250,31 @@ export function getResolvedPrErrorMessage(context: ResolvedPrContext): string | 
   }
 }
 
-export function canSwitchResolvedPr(context: ResolvedPrContext): boolean {
+const OUTSIDE_REPO_SWITCH_MESSAGE = "Cannot switch branches for a PR outside the current repo.";
+
+/** Why switching to the resolved PR's branch is refused, or undefined when it is allowed. */
+export function getSwitchRefusal(context: ResolvedPrContext): string | undefined {
   if (!context.repo || !context.result || context.result.kind !== "active") {
-    return false;
+    return getResolvedPrErrorMessage(context) ?? "PR lookup failed";
   }
 
-  if (!context.reference || context.reference.kind === "ref") {
-    return true;
+  if (
+    context.reference?.kind === "url" &&
+    !sameRepoRef(context.repo.remote.repoRef, context.reference.remote.repoRef)
+  ) {
+    return OUTSIDE_REPO_SWITCH_MESSAGE;
   }
 
-  return sameRepoRef(context.repo.remote.repoRef, context.reference.remote.repoRef);
+  // A fork PR's source branch is not on this remote; `git switch <name>`
+  // would land on an unrelated same-named branch such as main.
+  const pr = context.result.pr;
+  if (pr.fromFork) {
+    return `Cannot switch to ${pr.ref}: its branch ${pr.sourceBranch} is in a fork, not in this repo.`;
+  }
+
+  return undefined;
+}
+
+export function canSwitchResolvedPr(context: ResolvedPrContext): boolean {
+  return getSwitchRefusal(context) === undefined;
 }

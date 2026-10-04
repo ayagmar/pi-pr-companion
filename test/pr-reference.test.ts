@@ -133,7 +133,7 @@ void test("githubAdapter resolves a PR by ref in the current repo", async () => 
 
       if (
         args.join(" ") ===
-        "pr view 42 --repo github.com/octo/repo --json number,title,url,headRefName,baseRefName,updatedAt,isDraft,mergeStateStatus,reviewDecision,statusCheckRollup,additions,deletions,state"
+        "pr view 42 --repo github.com/octo/repo --json number,title,url,headRefName,baseRefName,updatedAt,isDraft,mergeStateStatus,reviewDecision,statusCheckRollup,isCrossRepository,additions,deletions,state"
       ) {
         return ok(
           JSON.stringify({
@@ -195,7 +195,7 @@ void test("githubAdapter resolves a PR by ref in the current repo", async () => 
   });
 
   assert.deepEqual(calls, [
-    "gh pr view 42 --repo github.com/octo/repo --json number,title,url,headRefName,baseRefName,updatedAt,isDraft,mergeStateStatus,reviewDecision,statusCheckRollup,additions,deletions,state",
+    "gh pr view 42 --repo github.com/octo/repo --json number,title,url,headRefName,baseRefName,updatedAt,isDraft,mergeStateStatus,reviewDecision,statusCheckRollup,isCrossRepository,additions,deletions,state",
     "gh api graphql --hostname github.com -f query=query($owner: String!, $name: String!, $number: Int!) {\n  repository(owner: $owner, name: $name) {\n    pullRequest(number: $number) {\n      reviewThreads(first: 100) {\n        nodes {\n          isResolved\n          path\n          comments(first: 1) {\n            nodes {\n              body\n              author {\n                login\n              }\n            }\n          }\n        }\n      }\n      latestOpinionatedReviews(first: 100) {\n        nodes {\n          state\n        }\n      }\n    }\n  }\n} -f owner=octo -f name=repo -F number=42",
   ]);
   assert.equal(result.kind, "active");

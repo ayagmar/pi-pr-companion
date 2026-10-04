@@ -99,7 +99,7 @@ Rules:
 - URLs can point at another repo
 - URLs copied from a PR tab (`/files`, `/commits`, `/checks`, `/diffs`) work too
 - `#123`, `!123` and URLs also work on a detached HEAD
-- branch switching only works when the PR belongs to the current repo
+- branch switching only works when the PR belongs to the current repo and its branch is not in a fork
 
 ## What each command is for
 
@@ -143,6 +143,7 @@ Switches to the PR branch.
 Behavior:
 
 - blocked when the PR is outside the current repo
+- blocked when the PR comes from a fork, since its branch is not on this remote
 - blocked on dirty worktrees in non-interactive use
 - asks before switching in interactive use if the worktree is dirty
 

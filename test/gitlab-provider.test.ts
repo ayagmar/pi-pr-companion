@@ -156,3 +156,41 @@ void test("listing open MRs asks for more than glab's default 30", async () => {
   assert.deepEqual(await gitlabAdapter.listRepoActivePrs(pi, repo, provider), []);
   assert.equal(calls[0]?.[calls[0].indexOf("--per-page") + 1], "100");
 });
+
+void test("a fork MR is flagged and ignored by the branch lookup", async () => {
+  const forkMr = {
+    ...MR_VIEW,
+    source_branch: "main",
+    source_project_id: 99,
+    target_project_id: 1,
+  };
+  const pi = {
+    exec: (_command: string, args: string[]) => {
+      if (args.includes("mr") && args.includes("list")) return Promise.resolve(ok([forkMr]));
+      if (args.includes("mr") && args.includes("view")) return Promise.resolve(ok(forkMr));
+      if (args.includes("api")) return Promise.resolve(ok([]));
+      throw new Error(`Unexpected: glab ${args.join(" ")}`);
+    },
+  } as unknown as ExtensionAPI;
+
+  const byBranch = await gitlabAdapter.getPrByBranch(
+    pi,
+    { ...repo, branch: "main" },
+    provider,
+    "main"
+  );
+  assert.equal(byBranch.kind, "none", "a fork's main is not this project's main");
+
+  const byIid = await gitlabAdapter.getPrByRef(pi, repo, provider, byRef);
+  assert.equal(byIid.kind === "active" ? byIid.pr.fromFork : undefined, true);
+
+  const sameProject = { ...MR_VIEW, source_project_id: 1, target_project_id: 1 };
+  const listed = await gitlabAdapter.listRepoActivePrs(
+    {
+      exec: () => Promise.resolve(ok([sameProject])),
+    } as unknown as ExtensionAPI,
+    repo,
+    provider
+  );
+  assert.equal(Array.isArray(listed) ? listed[0]?.fromFork : "not a list", undefined);
+});

@@ -35,6 +35,8 @@ interface GitLabMrListItem {
   detailed_merge_status?: string;
   has_conflicts?: boolean;
   draft?: boolean;
+  source_project_id?: number;
+  target_project_id?: number;
 }
 
 interface GitLabMrViewItem extends GitLabMrListItem {
@@ -88,9 +90,11 @@ export const gitlabAdapter: ProviderAdapter = {
       );
     }
 
-    const activePr = parseMrList(listResult.stdout).sort(
-      (left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt)
-    )[0];
+    // `--source-branch` matches fork MRs whose branch has the same name, so
+    // keep only MRs whose source branch lives in this project.
+    const activePr = parseMrList(listResult.stdout)
+      .filter((pr) => !pr.fromFork)
+      .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))[0];
 
     if (!activePr) {
       return { kind: "none", provider: provider.kind };
@@ -307,6 +311,10 @@ function toPrSummary(item: GitLabMrListItem): PrSummary | undefined {
     typeof item.detailed_merge_status === "string" ? item.detailed_merge_status : undefined;
   const hasConflicts = typeof item.has_conflicts === "boolean" ? item.has_conflicts : undefined;
   const draft = typeof item.draft === "boolean" ? item.draft : undefined;
+  const fromFork =
+    typeof item.source_project_id === "number" &&
+    typeof item.target_project_id === "number" &&
+    item.source_project_id !== item.target_project_id;
 
   return {
     iid: item.iid,
@@ -319,6 +327,7 @@ function toPrSummary(item: GitLabMrListItem): PrSummary | undefined {
     ...(detailedMergeStatus ? { detailedMergeStatus } : {}),
     ...(typeof hasConflicts === "boolean" ? { hasConflicts } : {}),
     ...(typeof draft === "boolean" ? { draft } : {}),
+    ...(fromFork ? { fromFork: true } : {}),
   };
 }
 

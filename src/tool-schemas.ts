@@ -25,6 +25,9 @@ const PR_SUMMARY_FIELDS = {
   targetBranch: Type.String(),
   updatedAt: Type.String(),
   draft: Type.Optional(Type.Boolean()),
+  fromFork: Type.Optional(
+    Type.Boolean({ description: "The source branch lives in a fork, not in this repo" })
+  ),
   state: Type.Optional(Type.String({ description: "open, closed, or merged" })),
   pipelineStatus: OPTIONAL_STRING,
   detailedMergeStatus: OPTIONAL_STRING,

@@ -502,6 +502,86 @@ void test("switch_pr_branch uses the shared switch path and blocks on dirty work
   assert.equal(result.isError, true, "failed switches must be reported as tool errors");
 });
 
+void test("switch_pr_branch refuses a fork PR instead of switching to a same-named branch", async () => {
+  const tools = new Map<string, RegisteredTool>();
+  const gitCalls: string[] = [];
+  const pi = {
+    on: () => undefined,
+    registerCommand: () => undefined,
+    registerTool: (tool: RegisteredTool) => {
+      tools.set(tool.name, tool);
+    },
+    exec: (command: string, args: string[]) => {
+      const joined = args.join(" ");
+      if (command === "git") {
+        gitCalls.push(joined);
+        if (joined.includes("rev-parse --show-toplevel")) return ok("/workspace/repo\n");
+        if (joined.includes("branch --show-current")) return ok("main\n");
+        if (joined.includes("remote get-url origin")) return ok("git@github.com:octo/repo.git\n");
+        return fail("");
+      }
+      if (command === "gh" && joined.includes("pr view 42")) {
+        return ok(
+          JSON.stringify({
+            number: 42,
+            title: "fix: from a fork",
+            url: "https://github.com/octo/repo/pull/42",
+            headRefName: "main",
+            baseRefName: "main",
+            updatedAt: "2026-03-20T10:00:00Z",
+            isDraft: false,
+            isCrossRepository: true,
+            additions: 5,
+            deletions: 2,
+          })
+        );
+      }
+      if (command === "gh" && joined.includes("api graphql")) return ok("{}");
+      throw new Error(`Unexpected invocation: ${command} ${joined}`);
+    },
+  } as unknown as ExtensionAPI;
+
+  prCompanionExtension(pi);
+  const switchPrBranch = tools.get("switch_pr_branch");
+  assert.ok(switchPrBranch);
+  const result = await switchPrBranch.execute(
+    "tool-fork",
+    { reference: "#42" },
+    undefined,
+    undefined,
+    {
+      cwd: "/workspace/repo",
+    }
+  );
+  assert.equal(result.isError, true);
+  assert.match(result.content[0]?.text ?? "", /#42.*in a fork/);
+  assert.ok(
+    gitCalls.every((call) => !/\b(switch|fetch|merge|status)\b/.test(call)),
+    `no checkout was attempted: ${JSON.stringify(gitCalls)}`
+  );
+
+  const getPrContext = tools.get("get_pr_context");
+  assert.ok(getPrContext);
+  const context = await getPrContext.execute(
+    "tool-fork-ctx",
+    { reference: "#42" },
+    undefined,
+    undefined,
+    {
+      cwd: "/workspace/repo",
+    }
+  );
+  const payload = parseJsonText<{
+    result?: { pr?: { fromFork?: boolean; diffStats?: unknown } };
+  }>(context.content[0]?.text);
+  assert.equal(payload.result?.pr?.fromFork, true);
+  assert.deepEqual(
+    payload.result?.pr?.diffStats,
+    { additions: 5, deletions: 2 },
+    "local main's diff stats never stand in for a fork PR's"
+  );
+});
+
 void test("switch_pr_branch runs its tool batch sequentially; read-only tools stay parallel", () => {
   const tools = new Map<string, RegisteredTool>();
   const pi = {
