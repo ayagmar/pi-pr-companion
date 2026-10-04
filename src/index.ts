@@ -243,7 +243,8 @@ function registerTools(pi: ExtensionAPI): void {
         repoRoot: listed.snapshot.repo?.repoRoot,
         provider: listed.snapshot.provider?.kind,
         prs: listed.prs ?? [],
-        error: listed.lookupError?.kind === "error" ? listed.lookupError.message : undefined,
+        // Same messages as /pr active, so a failed lookup never reads as "no open PRs".
+        error: getActionGuardMessage(listed.snapshot, listed.lookupError),
       };
       return {
         content: [{ type: "text", text: await formatToolJson(payload, LIST_REPO_PRS_TOOL_NAME) }],

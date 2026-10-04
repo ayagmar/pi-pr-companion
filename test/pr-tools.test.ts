@@ -619,6 +619,87 @@ void test("list_repo_prs truncates a long PR list and saves the full JSON", asyn
   }
 });
 
+async function listRepoPrsWith(
+  exec: (command: string, args: string[]) => ReturnType<typeof ok>
+): Promise<{ prs?: unknown[]; error?: string }> {
+  const tools = new Map<string, RegisteredTool>();
+  const pi = {
+    on: () => undefined,
+    registerCommand: () => undefined,
+    registerTool: (tool: RegisteredTool) => {
+      tools.set(tool.name, tool);
+    },
+    exec: (command: string, args: string[]) => Promise.resolve(exec(command, args)),
+  } as unknown as ExtensionAPI;
+  prCompanionExtension(pi);
+  const listRepoPrs = tools.get("list_repo_prs");
+  assert.ok(listRepoPrs);
+  const result = await listRepoPrs.execute("tool-list", {}, undefined, undefined, {
+    cwd: "/workspace/repo",
+  });
+  const payload = parseJsonText<{ prs?: unknown[]; error?: string }>(result.content[0]?.text);
+  assertStructuredContent(listRepoPrs, result, payload);
+  return payload;
+}
+
+function githubRepoExec(ghResult: ReturnType<typeof ok>) {
+  return (command: string, args: string[]) => {
+    const joined = args.join(" ");
+    if (command === "git") {
+      if (joined.includes("rev-parse --show-toplevel")) return ok("/workspace/repo\n");
+      if (joined.includes("branch --show-current")) return ok("main\n");
+      if (joined.includes("remote get-url origin")) return ok("git@github.com:octo/repo.git\n");
+      return fail("");
+    }
+    if (command === "gh" && joined.includes("pr list")) return ghResult;
+    throw new Error(`Unexpected invocation: ${command} ${joined}`);
+  };
+}
+
+void test("list_repo_prs reports lookup failures instead of an empty PR list", async () => {
+  const previousConfigPath = process.env.PI_PR_COMPANION_CONFIG;
+  process.env.PI_PR_COMPANION_CONFIG = "/nonexistent/pi-pr-companion-settings.json";
+  try {
+    const authError = await listRepoPrsWith(githubRepoExec(fail("HTTP 401: Bad credentials")));
+    assert.deepEqual(authError.prs, []);
+    assert.match(authError.error ?? "", /auth\/host issue[\s\S]*HTTP 401/);
+
+    const missingGh = await listRepoPrsWith(githubRepoExec(fail("")));
+    assert.match(missingGh.error ?? "", /`gh` is unavailable/);
+
+    const notGit = await listRepoPrsWith(() => ({
+      code: 128,
+      stdout: "",
+      stderr: "fatal: not a git repository",
+      killed: false,
+    }));
+    assert.equal(notGit.error, "Current directory is not inside a git repository");
+
+    const unknownRemote = await listRepoPrsWith((command, args) => {
+      const joined = args.join(" ");
+      if (command === "git" && joined.includes("rev-parse --show-toplevel")) {
+        return ok("/workspace/repo\n");
+      }
+      if (command === "git" && joined.includes("branch --show-current")) return ok("main\n");
+      if (command === "git" && joined.includes("remote get-url origin")) {
+        return ok("git@example.com:octo/repo.git\n");
+      }
+      return fail("");
+    });
+    assert.match(unknownRemote.error ?? "", /not recognized as GitHub or GitLab/);
+
+    const empty = await listRepoPrsWith(githubRepoExec(ok("[]")));
+    assert.deepEqual(empty.prs, []);
+    assert.equal(empty.error, undefined, "an empty list with no failure has no error");
+  } finally {
+    if (previousConfigPath === undefined) {
+      delete process.env.PI_PR_COMPANION_CONFIG;
+    } else {
+      process.env.PI_PR_COMPANION_CONFIG = previousConfigPath;
+    }
+  }
+});
+
 function ok(stdout: string) {
   return {
     code: 0,
