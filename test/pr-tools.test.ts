@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -526,6 +526,66 @@ void test("get_pr_context forwards its abort signal and stops once cancelled", a
   );
   assert.equal(calls.length, 1, "no further git/gh calls run after the abort");
   assert.equal(calls[0]?.signal, controller.signal);
+});
+
+void test("list_repo_prs truncates a long PR list and saves the full JSON", async () => {
+  const tools = new Map<string, RegisteredTool>();
+  const prs = Array.from({ length: 100 }, (_, index) => ({
+    number: index + 1,
+    title: `feat: change number ${index + 1}`,
+    url: `https://github.com/octo/repo/pull/${index + 1}`,
+    headRefName: `feature/${index + 1}`,
+    baseRefName: "main",
+    updatedAt: "2026-03-20T10:00:00Z",
+    isDraft: false,
+    mergeStateStatus: "BLOCKED",
+    reviewDecision: "REVIEW_REQUIRED",
+    statusCheckRollup: [{ conclusion: "FAILURE", name: "ci" }],
+  }));
+  const pi = {
+    on: () => undefined,
+    registerCommand: () => undefined,
+    registerTool: (tool: RegisteredTool) => {
+      tools.set(tool.name, tool);
+    },
+    exec: (command: string, args: string[]) => {
+      const joined = args.join(" ");
+      if (command === "git") {
+        if (joined.includes("rev-parse --show-toplevel")) return ok("/workspace/repo\n");
+        if (joined.includes("branch --show-current")) return ok("main\n");
+        if (joined.includes("config --get branch.main.remote")) return fail("");
+        if (joined.includes("remote get-url origin")) return ok("git@github.com:octo/repo.git\n");
+      }
+      if (command === "gh" && joined.includes("pr list")) return ok(JSON.stringify(prs));
+      throw new Error(`Unexpected invocation: ${command} ${joined}`);
+    },
+  } as unknown as ExtensionAPI;
+
+  prCompanionExtension(pi);
+  const listRepoPrs = tools.get("list_repo_prs");
+  assert.ok(listRepoPrs);
+  if (!listRepoPrs) {
+    return;
+  }
+
+  const result = await listRepoPrs.execute("tool-5", {}, undefined, undefined, {
+    cwd: "/workspace/repo",
+  });
+  const text = result.content[0]?.text ?? "";
+  assert.ok(text.split("\n").length <= 2002, "model-facing output stays within pi's line limit");
+  const fullPath = text.match(/Full JSON: (.+\.json)\]$/)?.[1];
+  assert.ok(fullPath, "truncated output names the file with the full JSON");
+  if (!fullPath) {
+    return;
+  }
+
+  try {
+    const full = JSON.parse(await readFile(fullPath, "utf8")) as ListRepoPrsToolPayload;
+    assert.equal(full.prs?.length, 100);
+    assert.equal((result.details as ListRepoPrsToolPayload).prs?.length, 100);
+  } finally {
+    await rm(path.dirname(fullPath), { recursive: true, force: true });
+  }
 });
 
 function ok(stdout: string) {

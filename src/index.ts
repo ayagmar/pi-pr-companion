@@ -53,6 +53,7 @@ import {
   getReviewSessionState,
   startReviewSession,
 } from "./review-session.js";
+import { formatToolJson } from "./tool-output.js";
 import {
   type ExecApi,
   type PrCompanionConfig,
@@ -212,7 +213,7 @@ function registerTools(pi: ExtensionAPI): void {
       const resolved = await resolvePrContext(exec, cwd, params.reference);
       const payload = await buildToolPrContextPayload(cwd, resolved);
       return {
-        content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+        content: [{ type: "text", text: await formatToolJson(payload, GET_PR_CONTEXT_TOOL_NAME) }],
         details: payload,
       };
     },
@@ -240,7 +241,7 @@ function registerTools(pi: ExtensionAPI): void {
         error: listed.lookupError?.kind === "error" ? listed.lookupError.message : undefined,
       };
       return {
-        content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+        content: [{ type: "text", text: await formatToolJson(payload, LIST_REPO_PRS_TOOL_NAME) }],
         details: payload,
       };
     },
