@@ -128,6 +128,11 @@ export async function hasDirtyWorktree(pi: ExecApi, repoRoot: string): Promise<b
   return result.code === 0 && result.stdout.trim().length > 0;
 }
 
+/** GitHub and GitLab resolve owner/repo paths case-insensitively. */
+export function sameRepoRef(left: string, right: string): boolean {
+  return left.toLowerCase() === right.toLowerCase();
+}
+
 export function isGitHubHost(host: string): boolean {
   return host.toLowerCase().includes("github");
 }

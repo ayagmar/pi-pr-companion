@@ -1,5 +1,5 @@
 import { isIgnoredBranch, loadConfig } from "./config.js";
-import { getDiffStats, resolveRepoContext } from "./git.js";
+import { getDiffStats, resolveRepoContext, sameRepoRef } from "./git.js";
 import { evaluatePrReadiness } from "./pr-readiness.js";
 import { parsePrReference } from "./pr-reference.js";
 import { getProviderAdapter, getProviderConfigForRemote } from "./providers/index.js";
@@ -194,7 +194,7 @@ async function enrichResult(
   if (
     repo &&
     repo.branch === result.pr.sourceBranch &&
-    (!options?.allowedRepoRef || repo.remote.repoRef === options.allowedRepoRef)
+    (!options?.allowedRepoRef || sameRepoRef(repo.remote.repoRef, options.allowedRepoRef))
   ) {
     const diffStats = await getDiffStats(pi, repo.repoRoot, result.pr.targetBranch, {
       remoteName: repo.remoteName,
@@ -257,5 +257,5 @@ export function canSwitchResolvedPr(context: ResolvedPrContext): boolean {
     return true;
   }
 
-  return context.repo.remote.repoRef === context.reference.remote.repoRef;
+  return sameRepoRef(context.repo.remote.repoRef, context.reference.remote.repoRef);
 }
