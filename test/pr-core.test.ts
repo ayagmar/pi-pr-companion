@@ -686,6 +686,25 @@ void test("gitlab severity and status text map to footer states", () => {
   });
   assert.equal(blocked, "blocked");
 
+  const withoutPipeline = {
+    iid: 54,
+    ref: "!54",
+    title: "Example",
+    url: "https://gitlab.example.com/group/project/-/merge_requests/54",
+    sourceBranch: "feat/no-ci",
+    targetBranch: "main",
+    updatedAt: "2026-03-16T00:00:00Z",
+  };
+  assert.equal(
+    getGitLabPrSeverity({ ...withoutPipeline, detailedMergeStatus: "mergeable" }),
+    "success",
+    "an MR without CI that GitLab calls mergeable is not stuck pending"
+  );
+  assert.equal(
+    getGitLabPrSeverity({ ...withoutPipeline, detailedMergeStatus: "checking" }),
+    "pending"
+  );
+
   const github = getGitHubPrSeverity({
     iid: 42,
     ref: "#42",
