@@ -410,6 +410,19 @@ async function handleReview(
       return;
     }
 
+    // A review session anchors its return point at the current leaf. While a run
+    // is in progress that leaf is mid-run (possibly a tool call without results),
+    // and the rest of the run would land inside the review branch, so
+    // /pr end-review would drop it from the restored context.
+    if (startSession && !ctx.isIdle()) {
+      notify(
+        ctx,
+        "Wait for the current run to finish before starting a review session.",
+        "warning"
+      );
+      return;
+    }
+
     if (startSession) {
       const session = startReviewSession(pi, ctx, {
         active: true,
@@ -435,7 +448,8 @@ async function handleReview(
       .join(" ");
     // Expand the /review-pr prompt template (sendUserMessage sends text literally
     // by default) and queue it as a follow-up while the agent is busy, instead of
-    // letting pi reject the message.
+    // letting pi reject the message. Only a plain review gets here while busy;
+    // review sessions require an idle agent (see above).
     const idle = ctx.isIdle();
     pi.sendUserMessage(reviewCommand, {
       expandPromptTemplates: true,

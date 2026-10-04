@@ -123,6 +123,8 @@ If Pi is still working on something, the review is queued as a follow-up and sta
 
 Starts a review session, keeps a visible reminder in Pi, and lets you return later.
 
+A review session starts from where the conversation is now, so wait for Pi to finish its current run first. `/pr review session` asks you to wait instead of starting while Pi is busy.
+
 ### `/pr end-review`
 
 Ends the current review session.
