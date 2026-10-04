@@ -346,8 +346,11 @@ async function renderFooterInMode(mode: "tui" | "rpc"): Promise<string | undefin
 
   prCompanionExtension(pi);
   handlers.get("session_start")?.({ type: "session_start" }, ctx);
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
+  // The status is set after async provider lookups; poll instead of counting ticks so a busy
+  // machine cannot make the test flaky.
+  const deadline = Date.now() + 2_000;
+  while (!statusUpdates.at(-1)?.includes("PR #") && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
   }
   return statusUpdates.at(-1);
 }
