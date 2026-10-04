@@ -118,6 +118,66 @@ void test("a GitLab 404 for a missing project is an error, not a missing MR", as
   assert.equal(result.kind, "error");
 });
 
+const gitlabRepo: RepoContext = {
+  ...githubRepo,
+  remoteUrl: "https://gitlab.example.com/g/r.git",
+  remote: {
+    host: "gitlab.example.com",
+    fullPath: "g/r",
+    repoRef: "gitlab.example.com/g/r",
+    webUrl: "https://gitlab.example.com/g/r",
+  },
+};
+
+void test("a GitLab server error for MR !404 is an error, not a missing MR", async () => {
+  const pi = {
+    exec: () =>
+      Promise.resolve(
+        fail(
+          "GET https://gitlab.example.com/api/v4/projects/g%2Fr/merge_requests/404: 500 {message: 500 Internal Server Error}"
+        )
+      ),
+  } as unknown as ExtensionAPI;
+
+  const result = await gitlabAdapter.getPrByRef(pi, gitlabRepo, gitlabProvider, {
+    kind: "ref",
+    provider: "gitlab",
+    iid: 404,
+    ref: "!404",
+  });
+  assert.equal(result.kind, "error");
+});
+
+void test("a failed GitLab MR list for branch fix-404 is an error, not a missing MR", async () => {
+  const pi = {
+    exec: () =>
+      Promise.resolve(
+        fail(
+          "GET https://gitlab.example.com/api/v4/projects/g%2Fr/merge_requests?source_branch=fix-404: 502 {message: 502 Bad Gateway}"
+        )
+      ),
+  } as unknown as ExtensionAPI;
+
+  const result = await gitlabAdapter.getPrByBranch(pi, gitlabRepo, gitlabProvider, "fix-404");
+  assert.equal(result.kind, "error");
+});
+
+void test("a GitLab 404 status for a missing MR is still reported as none", async () => {
+  for (const stderr of [
+    "GET https://gitlab.example.com/api/v4/projects/g%2Fr/merge_requests/9999: 404 {message: 404 Not Found}",
+    "ERROR: 404 Not Found",
+  ]) {
+    const pi = { exec: () => Promise.resolve(fail(stderr)) } as unknown as ExtensionAPI;
+    const result = await gitlabAdapter.getPrByRef(pi, gitlabRepo, gitlabProvider, {
+      kind: "ref",
+      provider: "gitlab",
+      iid: 9999,
+      ref: "!9999",
+    });
+    assert.deepEqual(result, { kind: "none", provider: "gitlab" }, stderr);
+  }
+});
+
 function fail(stderr: string) {
   return { code: 1, stdout: "", stderr, killed: false };
 }
