@@ -155,9 +155,8 @@ export function getGitLabPrSeverity(pr: PrDetails): "success" | "pending" | "blo
     return "blocked";
   }
   if (pipelineStatus === "success") return "success";
-  if (pipelineStatus === "pending") {
-    return "pending";
-  }
+  // A project without CI has no pipeline; GitLab still reports the MR mergeable.
+  if (pipelineStatus === "none" && mergeStatus === "mergeable") return "success";
 
   return "pending";
 }
