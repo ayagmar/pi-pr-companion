@@ -10,6 +10,8 @@ import {
   type ResolvedPrContext,
 } from "./types.js";
 
+const DETACHED_HEAD_MESSAGE = "HEAD is detached. Check out a branch or pass a PR ref or URL.";
+
 export async function resolvePrContext(
   pi: ExecApi,
   cwd: string,
@@ -39,7 +41,7 @@ export async function resolvePrContext(
         repo,
         hidden: true,
         reason: "detached-head",
-        errorMessage: "HEAD is detached. Check out a branch or pass a PR ref or URL.",
+        errorMessage: DETACHED_HEAD_MESSAGE,
       };
     }
 
@@ -236,6 +238,8 @@ export function getResolvedPrErrorMessage(context: ResolvedPrContext): string | 
         : "Current repo remote is not recognized as GitHub or GitLab";
     case "ignored-branch":
       return context.repo ? `Branch is ignored: ${context.repo.branch}` : "Branch is ignored";
+    case "detached-head":
+      return DETACHED_HEAD_MESSAGE;
     case "provider-mismatch":
     case "invalid-reference":
       return context.errorMessage;
