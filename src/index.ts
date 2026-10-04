@@ -108,9 +108,10 @@ export default function prCompanionExtension(pi: ExtensionAPI) {
       applyReviewSessionState(ctx);
       if (!ctx.hasUI) return;
 
+      const writeFooter = beginFooterWrite();
       const snapshot = await getRepoStatusSnapshot(pi, ctx.cwd, options);
       if (generation !== sessionGeneration) return;
-      applyStatusLine(ctx, snapshot);
+      writeFooter(ctx, snapshot);
     } catch (error) {
       if (generation !== sessionGeneration || ctx.mode === "tui") return;
       console.error("[pi-pr-companion] Failed to refresh status", error);
@@ -386,9 +387,10 @@ async function handleRefresh(pi: ExtensionAPI, ctx: ExtensionCommandContext): Pr
   try {
     const message = await runWithLoader(ctx, "Refreshing PR status...", async () => {
       clearRepoStatusCache();
+      const writeFooter = beginFooterWrite();
       // One forced lookup feeds both the footer and the status message.
       const refreshed = await getRepoStatusSnapshot(pi, ctx.cwd, { force: true });
-      applyStatusLine(ctx, refreshed);
+      writeFooter(ctx, refreshed);
       const resolved = snapshotToResolvedContext(refreshed);
       return `Refreshed PR status.\n\n${buildResolvedPrStatusMessage(ctx.cwd, resolved)}`;
     });
@@ -572,10 +574,11 @@ async function handleSwitch(
     }
 
     clearRepoStatusCache(repo.repoRoot);
+    const writeFooter = beginFooterWrite();
     const refreshed = await runWithLoader(ctx, "Refreshing PR footer...", () =>
       getRepoStatusSnapshot(pi, ctx.cwd, { force: true })
     );
-    applyStatusLine(ctx, refreshed);
+    writeFooter(ctx, refreshed);
     notify(
       ctx,
       formatBranchSwitchSuccessMessage({
@@ -1506,11 +1509,28 @@ async function saveConfigAndRefresh(
   config: PrCompanionConfig
 ): Promise<void> {
   await runWithLoader(ctx, "Saving PR settings...", async () => {
+    const writeFooter = beginFooterWrite();
     await saveConfig(config);
     clearRepoStatusCache();
     const refreshed = await getRepoStatusSnapshot(pi, ctx.cwd, { force: true });
-    applyStatusLine(ctx, refreshed);
+    writeFooter(ctx, refreshed);
   });
+}
+
+// Background refreshes and commands look the footer up concurrently. Only the
+// most recently started lookup may write it, so a slow refresh that read an
+// older branch or config never overwrites a newer footer.
+let footerWriteSeq = 0;
+
+function beginFooterWrite(): (
+  ctx: Pick<ExtensionContext, "hasUI" | "ui">,
+  snapshot: RepoStatusSnapshot
+) => void {
+  footerWriteSeq += 1;
+  const seq = footerWriteSeq;
+  return (ctx, snapshot) => {
+    if (seq === footerWriteSeq) applyStatusLine(ctx, snapshot);
+  };
 }
 
 function applyStatusLine(

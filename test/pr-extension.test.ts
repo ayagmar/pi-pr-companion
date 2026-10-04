@@ -162,6 +162,125 @@ void test("refreshes that finish after session_shutdown leave the stale ctx alon
   }
 });
 
+void test("an older footer refresh that finishes last does not overwrite a newer one", async () => {
+  const previousConfigPath = process.env.PI_PR_COMPANION_CONFIG;
+  process.env.PI_PR_COMPANION_CONFIG = "/nonexistent/pi-pr-companion-settings.json";
+  try {
+    const handlers = new Map<string, LifecycleHandler>();
+    const statusUpdates: (string | undefined)[] = [];
+    const heldGhCalls: (() => void)[] = [];
+    let branch = "feature/a";
+    let holdGh = true;
+    const prFor = (number: number, headRefName: string) => ({
+      number,
+      title: `feat: ${headRefName}`,
+      url: `https://github.com/octo/repo/pull/${number}`,
+      headRefName,
+      baseRefName: "main",
+      updatedAt: "2026-03-20T10:00:00Z",
+      isDraft: false,
+      mergeStateStatus: "CLEAN",
+      reviewDecision: "APPROVED",
+      statusCheckRollup: [{ conclusion: "SUCCESS", name: "ci" }],
+    });
+    const ghResponse = (joined: string) => {
+      if (joined.includes("--head feature/a")) return ok(JSON.stringify([prFor(1, "feature/a")]));
+      if (joined.includes("--head feature/b")) return ok(JSON.stringify([prFor(2, "feature/b")]));
+      if (joined.includes("pr view 1")) return ok(JSON.stringify(prFor(1, "feature/a")));
+      if (joined.includes("pr view 2")) return ok(JSON.stringify(prFor(2, "feature/b")));
+      if (joined.includes("api graphql")) {
+        return ok(
+          JSON.stringify({
+            data: {
+              repository: {
+                pullRequest: {
+                  reviewThreads: { nodes: [] },
+                  latestOpinionatedReviews: { nodes: [] },
+                },
+              },
+            },
+          })
+        );
+      }
+      throw new Error(`Unexpected invocation: gh ${joined}`);
+    };
+
+    const pi = {
+      on: (eventName: string, handler: LifecycleHandler) => {
+        handlers.set(eventName, handler);
+      },
+      registerCommand: () => undefined,
+      registerTool: () => undefined,
+      exec: (command: string, args: string[]) => {
+        const joined = args.join(" ");
+        if (command === "git") {
+          if (joined.includes("rev-parse --show-toplevel")) {
+            return Promise.resolve(ok("/workspace/footer-order\n"));
+          }
+          if (joined.includes("branch --show-current")) {
+            return Promise.resolve(ok(`${branch}\n`));
+          }
+          if (joined.includes("remote get-url origin")) {
+            return Promise.resolve(ok("https://github.com/octo/repo.git\n"));
+          }
+          return Promise.resolve({ code: 1, stdout: "", stderr: "", killed: false });
+        }
+        if (holdGh) {
+          return new Promise((resolve) => heldGhCalls.push(() => resolve(ghResponse(joined))));
+        }
+        return Promise.resolve(ghResponse(joined));
+      },
+    } as unknown as ExtensionAPI;
+
+    const ctx = {
+      cwd: "/workspace/footer-order",
+      hasUI: true,
+      mode: "tui",
+      sessionManager: { getBranch: () => [] },
+      ui: {
+        setStatus: (_key: string, text: string | undefined) => statusUpdates.push(text),
+        setWidget: () => undefined,
+        theme: { fg: (_color: string, text: string) => text },
+      },
+    };
+    const settle = async () => {
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+    };
+
+    prCompanionExtension(pi);
+    // The startup refresh reads branch A, then waits on gh.
+    handlers.get("session_start")?.({ type: "session_start" }, ctx);
+    await settle();
+    assert.ok(heldGhCalls.length > 0, "the startup refresh is waiting on gh");
+
+    // The branch moves to B and a later refresh finishes first.
+    branch = "feature/b";
+    holdGh = false;
+    handlers.get("session_tree")?.({ type: "session_tree" }, ctx);
+    await settle();
+    assert.match(statusUpdates.at(-1) ?? "", /PR #2/);
+
+    // The older refresh for branch A finishes last and must be dropped.
+    while (heldGhCalls.length > 0) {
+      heldGhCalls.shift()?.();
+      await settle();
+    }
+    assert.ok(
+      statusUpdates.every((text) => !/PR #1/.test(text ?? "")),
+      `stale footer written: ${JSON.stringify(statusUpdates)}`
+    );
+    assert.match(statusUpdates.at(-1) ?? "", /PR #2/);
+  } finally {
+    restoreEnv("PI_PR_COMPANION_CONFIG", previousConfigPath);
+  }
+});
+
+function ok(stdout: string) {
+  return { code: 0, stdout, stderr: "", killed: false };
+}
+
 function restoreEnv(name: string, value: string | undefined): void {
   if (value === undefined) {
     delete process.env[name];
