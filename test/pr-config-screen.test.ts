@@ -38,7 +38,8 @@ void test("number settings show the current value and keep it on empty input", a
     assert.ok(handler);
 
     // pi's TUI ignores the input placeholder, so an empty submit must not be an error.
-    const inputAnswers = ["", "250"];
+    // "15s" used to be read as 15 by parseInt.
+    const inputAnswers = ["", "15s", "250"];
     const inputTitles: string[] = [];
     let advancedVisits = 0;
     const notifications: { message: string; level?: string }[] = [];
@@ -50,7 +51,7 @@ void test("number settings show the current value and keep it on empty input", a
       ui: {
         notify: (message, level) => notifications.push(level ? { message, level } : { message }),
         select: (_title, options) => {
-          if (advancedVisits >= 2) return Promise.resolve(undefined);
+          if (advancedVisits >= 3) return Promise.resolve(undefined);
           advancedVisits += 1;
           return Promise.resolve(options.find((option) => option.startsWith("Advanced")));
         },
@@ -63,14 +64,14 @@ void test("number settings show the current value and keep it on empty input", a
     });
 
     assert.match(inputTitles[0] ?? "", /current 15000/);
-    assert.match(inputTitles[1] ?? "", /current 15000/);
+    assert.match(inputTitles[2] ?? "", /current 15000/);
     assert.deepEqual(
       notifications.filter((item) => item.level === "error"),
-      [],
-      "empty input keeps the current value instead of failing validation"
+      [{ message: "Status cache TTL must be a positive whole number.", level: "error" }],
+      "empty input keeps the current value; only the malformed value is rejected"
     );
-    assert.equal(notifications.length, 1);
-    assert.match(notifications[0]?.message ?? "", /Status cache TTL set to 250ms/);
+    assert.equal(notifications.length, 2);
+    assert.match(notifications[1]?.message ?? "", /Status cache TTL set to 250ms/);
 
     const saved = JSON.parse(await readFile(configPath, "utf8")) as { cacheTtlMs?: number };
     assert.equal(saved.cacheTtlMs, 250);

@@ -1044,7 +1044,7 @@ async function openDisplaySettings(
       continue;
     }
     if (stalePrDays === "invalid") {
-      notify(ctx, "Stale PR threshold must be a positive number.", "error");
+      notify(ctx, "Stale PR threshold must be a positive whole number.", "error");
       continue;
     }
 
@@ -1076,8 +1076,9 @@ async function promptPositiveInteger(
     return undefined;
   }
 
-  const parsed = Number.parseInt(trimmed, 10);
-  if (!Number.isFinite(parsed) || parsed < 1) {
+  // parseInt alone would read "15s" as 15 and "1.5" as 1.
+  const parsed = /^\d+$/.test(trimmed) ? Number(trimmed) : Number.NaN;
+  if (!Number.isSafeInteger(parsed) || parsed < 1) {
     return "invalid";
   }
 
@@ -1161,7 +1162,7 @@ async function openAdvancedSettings(
     return config;
   }
   if (cacheTtlMs === "invalid") {
-    notify(ctx, "Status cache TTL must be a positive number.", "error");
+    notify(ctx, "Status cache TTL must be a positive whole number.", "error");
     return config;
   }
 
