@@ -244,7 +244,7 @@ async function enrichLookupResult(
   if (result.kind !== "active") return result;
 
   let pr = result.pr;
-  if (repo.branch === result.pr.sourceBranch) {
+  if (repo.branch === result.pr.sourceBranch && !result.pr.fromFork) {
     const diffStats = await getDiffStats(pi, repo.repoRoot, result.pr.targetBranch, {
       remoteName: repo.remoteName,
     });

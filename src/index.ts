@@ -38,7 +38,7 @@ import {
 import { hasDirtyWorktree, sameRepoRef, switchToBranch } from "./git.js";
 import { buildDashboardTitle, formatPickerEntry } from "./pr-display.js";
 import { evaluatePrReadiness } from "./pr-readiness.js";
-import { canSwitchResolvedPr, getResolvedPrErrorMessage, resolvePrContext } from "./pr-resolver.js";
+import { getResolvedPrErrorMessage, getSwitchRefusal, resolvePrContext } from "./pr-resolver.js";
 import {
   clearRepoStatusCache,
   describePrActivity,
@@ -283,11 +283,11 @@ function registerTools(pi: ExtensionAPI): void {
         };
       }
 
-      if (!canSwitchResolvedPr(resolved)) {
-        const message = "Cannot switch branches for a PR outside the current repo.";
+      const refusal = getSwitchRefusal(resolved);
+      if (refusal) {
         return {
-          content: [{ type: "text", text: message }],
-          details: { ok: false, message },
+          content: [{ type: "text", text: refusal }],
+          details: { ok: false, message: refusal },
           isError: true,
         };
       }
@@ -554,8 +554,9 @@ async function handleSwitch(
     }
 
     const repo = resolved.repo;
-    if (!canSwitchResolvedPr(resolved)) {
-      notify(ctx, "Cannot switch branches for a PR outside the current repo.", "error");
+    const refusal = getSwitchRefusal(resolved);
+    if (refusal) {
+      notify(ctx, refusal, "error");
       return;
     }
 

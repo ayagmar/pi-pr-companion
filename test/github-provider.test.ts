@@ -144,3 +144,48 @@ void test("listing open PRs asks for more than gh's default 30", async () => {
   assert.deepEqual(await githubAdapter.listRepoActivePrs(pi, repo, provider), []);
   assert.equal(calls[0]?.[calls[0].indexOf("--limit") + 1], "100");
 });
+
+void test("a fork PR is flagged and ignored by the branch lookup", async () => {
+  const forkPr = {
+    ...PR_VIEW,
+    number: 43,
+    url: "https://github.com/octo/repo/pull/43",
+    headRefName: "main",
+    isCrossRepository: true,
+  };
+  const calls: string[] = [];
+  const pi = {
+    exec: (_command: string, args: string[]) => {
+      calls.push(args.join(" "));
+      if (args[0] === "pr" && args[1] === "list") {
+        return Promise.resolve({ code: 0, stdout: JSON.stringify([forkPr]), stderr: "" });
+      }
+      if (args[0] === "pr" && args[1] === "view") {
+        return Promise.resolve({ code: 0, stdout: JSON.stringify(forkPr), stderr: "" });
+      }
+      if (args[0] === "api") return Promise.resolve({ code: 0, stdout: "{}", stderr: "" });
+      throw new Error(`Unexpected: gh ${args.join(" ")}`);
+    },
+  } as unknown as ExtensionAPI;
+
+  const byBranch = await githubAdapter.getPrByBranch(
+    pi,
+    { ...repo, branch: "main" },
+    provider,
+    "main"
+  );
+  assert.equal(byBranch.kind, "none", "a fork's main is not this repo's main");
+  assert.ok(calls.some((call) => call.includes("isCrossRepository")));
+
+  const byNumber = await githubAdapter.getPrByRef(pi, repo, provider, {
+    kind: "ref",
+    provider: "github",
+    iid: 43,
+    ref: "#43",
+  });
+  assert.equal(byNumber.kind === "active" ? byNumber.pr.fromFork : undefined, true);
+
+  const listed = await githubAdapter.listRepoActivePrs(pi, repo, provider);
+  assert.ok(Array.isArray(listed));
+  assert.equal(Array.isArray(listed) ? listed[0]?.fromFork : undefined, true);
+});
