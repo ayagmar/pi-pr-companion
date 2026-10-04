@@ -442,10 +442,14 @@ function isPrNotFoundMessage(message: string): boolean {
     return false;
   }
 
+  // Match only the status forms glab prints ("<url>: 404 {...}", "404 Not
+  // Found"); a bare 404 may be an MR iid, a branch name, or a path segment
+  // inside the request URL of an unrelated failure.
   return (
     normalized.includes("merge request not found") ||
     normalized.includes("no merge requests found") ||
-    /\b404\b/.test(normalized)
+    /\b404 not found\b/.test(normalized) ||
+    /:\s*404\s*\{/.test(normalized)
   );
 }
 
