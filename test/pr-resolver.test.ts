@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { resolvePrContext } from "../src/pr-resolver.js";
+import { canSwitchResolvedPr, resolvePrContext } from "../src/pr-resolver.js";
 
 const PR_VIEW = {
   number: 42,
@@ -17,7 +17,11 @@ const PR_VIEW = {
   deletions: 30,
 };
 
-function createPi(currentBranch: string, calls: string[]): ExtensionAPI {
+function createPi(
+  currentBranch: string,
+  calls: string[],
+  remoteUrl = "https://github.com/octo/repo.git"
+): ExtensionAPI {
   const ok = (stdout: string) => Promise.resolve({ code: 0, stdout, stderr: "" });
   return {
     exec: (command: string, args: string[]) => {
@@ -29,8 +33,7 @@ function createPi(currentBranch: string, calls: string[]): ExtensionAPI {
         if (joined.includes("config --get branch.")) {
           return Promise.resolve({ code: 1, stdout: "", stderr: "" });
         }
-        if (joined.includes("remote get-url origin"))
-          return ok("https://github.com/octo/repo.git\n");
+        if (joined.includes("remote get-url origin")) return ok(`${remoteUrl}\n`);
         if (joined.includes("diff --shortstat")) {
           return ok(" 2 files changed, 3 insertions(+), 1 deletion(-)\n");
         }
@@ -89,6 +92,35 @@ void test("a detached HEAD still resolves the repo for PR refs", async () => {
 
     const byRef = await resolvePrContext(createPi("", []), "/workspace/repo", "#42");
     assert.equal(byRef.result?.kind, "active");
+  } finally {
+    if (previous === undefined) delete process.env.PI_PR_COMPANION_CONFIG;
+    else process.env.PI_PR_COMPANION_CONFIG = previous;
+  }
+});
+
+void test("a PR URL whose owner/repo casing differs from the remote is the same repo", async () => {
+  const previous = process.env.PI_PR_COMPANION_CONFIG;
+  process.env.PI_PR_COMPANION_CONFIG = "/nonexistent/pi-pr-companion-settings.json";
+  try {
+    const resolved = await resolvePrContext(
+      createPi("feature/other", [], "git@github.com:Octo/Repo.git"),
+      "/workspace/repo",
+      "https://github.com/octo/repo/pull/42"
+    );
+    assert.equal(resolved.result?.kind, "active");
+    assert.equal(canSwitchResolvedPr(resolved), true);
+    assert.deepEqual(
+      resolved.result?.kind === "active" ? resolved.result.pr.diffStats : undefined,
+      { additions: 3, deletions: 1 },
+      "the checked-out PR branch uses local diff stats"
+    );
+
+    const otherRepo = await resolvePrContext(
+      createPi("feature/other", [], "git@github.com:Octo/Other.git"),
+      "/workspace/repo",
+      "https://github.com/octo/repo/pull/42"
+    );
+    assert.equal(canSwitchResolvedPr(otherRepo), false);
   } finally {
     if (previous === undefined) delete process.env.PI_PR_COMPANION_CONFIG;
     else process.env.PI_PR_COMPANION_CONFIG = previous;

@@ -35,7 +35,7 @@ import {
   STATUS_KEY,
   SWITCH_PR_BRANCH_TOOL_NAME,
 } from "./constants.js";
-import { hasDirtyWorktree, switchToBranch } from "./git.js";
+import { hasDirtyWorktree, sameRepoRef, switchToBranch } from "./git.js";
 import { buildDashboardTitle, formatPickerEntry } from "./pr-display.js";
 import { evaluatePrReadiness } from "./pr-readiness.js";
 import { canSwitchResolvedPr, getResolvedPrErrorMessage, resolvePrContext } from "./pr-resolver.js";
@@ -1864,7 +1864,7 @@ function getLocalReviewGuidelinesCwd(resolved: ResolvedPrContext): string | unde
     return resolved.repo.cwd;
   }
 
-  return resolved.repo.remote.repoRef === resolved.reference.remote.repoRef
+  return sameRepoRef(resolved.repo.remote.repoRef, resolved.reference.remote.repoRef)
     ? resolved.repo.cwd
     : undefined;
 }
