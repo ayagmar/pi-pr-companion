@@ -53,7 +53,8 @@ import {
   getReviewSessionState,
   startReviewSession,
 } from "./review-session.js";
-import { formatToolJson } from "./tool-output.js";
+import { formatToolJson, toStructuredContent } from "./tool-output.js";
+import { LIST_REPO_PRS_OUTPUT_SCHEMA, PR_CONTEXT_OUTPUT_SCHEMA } from "./tool-schemas.js";
 import {
   type ExecApi,
   type PrCompanionConfig,
@@ -206,6 +207,7 @@ function registerTools(pi: ExtensionAPI): void {
       "Prefer this tool over raw gh/glab commands for PR context.",
     ],
     parameters: PR_CONTEXT_SCHEMA,
+    outputSchema: PR_CONTEXT_OUTPUT_SCHEMA,
     annotations: { readOnlyHint: true, openWorldHint: true },
     execute: async (_toolCallId, params, signal, _onUpdate, ctx) => {
       const exec = bindAbortSignal(pi, signal);
@@ -215,6 +217,7 @@ function registerTools(pi: ExtensionAPI): void {
       return {
         content: [{ type: "text", text: await formatToolJson(payload, GET_PR_CONTEXT_TOOL_NAME) }],
         details: payload,
+        structuredContent: toStructuredContent(payload),
       };
     },
   });
@@ -228,6 +231,7 @@ function registerTools(pi: ExtensionAPI): void {
       "Use this tool when you need a compact list of active PRs for the current repository before choosing one to inspect.",
     ],
     parameters: OPTIONAL_CWD_SCHEMA,
+    outputSchema: LIST_REPO_PRS_OUTPUT_SCHEMA,
     annotations: { readOnlyHint: true, openWorldHint: true },
     execute: async (_toolCallId, params, signal, _onUpdate, ctx) => {
       const exec = bindAbortSignal(pi, signal);
@@ -243,6 +247,7 @@ function registerTools(pi: ExtensionAPI): void {
       return {
         content: [{ type: "text", text: await formatToolJson(payload, LIST_REPO_PRS_TOOL_NAME) }],
         details: payload,
+        structuredContent: toStructuredContent(payload),
       };
     },
   });

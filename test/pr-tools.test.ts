@@ -4,11 +4,14 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { type TSchema } from "typebox";
+import { Value } from "typebox/value";
 import prCompanionExtension from "../src/index.js";
 
 interface RegisteredTool {
   name: string;
   executionMode?: string;
+  outputSchema?: TSchema;
   execute: (
     toolCallId: string,
     params: unknown,
@@ -18,6 +21,7 @@ interface RegisteredTool {
   ) => Promise<{
     content: { type: string; text: string }[];
     details: unknown;
+    structuredContent?: unknown;
     isError?: boolean;
   }>;
 }
@@ -174,6 +178,7 @@ void test("get_pr_context and list_repo_prs expose provider-backed PR data", asy
     assert.equal(prContext.result?.pr?.ref, "#42");
     assert.equal(prContext.sharedReviewInstructions, "Focus on missing tests.");
     assert.equal(prContext.projectReviewGuidelines, "Always review migrations.");
+    assertStructuredContent(getPrContext, prContextResult, prContext);
 
     const listResult = await listRepoPrs.execute("tool-2", {}, undefined, undefined, {
       cwd: repoRoot,
@@ -181,6 +186,7 @@ void test("get_pr_context and list_repo_prs expose provider-backed PR data", asy
     const listed = parseJsonText<ListRepoPrsToolPayload>(listResult.content[0]?.text);
     assert.equal(listed.prs?.length, 1);
     assert.equal(listed.prs?.[0]?.ref, "#42");
+    assertStructuredContent(listRepoPrs, listResult, listed);
   } finally {
     if (previousConfigPath === undefined) {
       delete process.env.PI_PR_COMPANION_CONFIG;
@@ -602,6 +608,12 @@ void test("list_repo_prs truncates a long PR list and saves the full JSON", asyn
     const full = JSON.parse(await readFile(fullPath, "utf8")) as ListRepoPrsToolPayload;
     assert.equal(full.prs?.length, 100);
     assert.equal((result.details as ListRepoPrsToolPayload).prs?.length, 100);
+    // Scripts (codemode) get the full payload, not the cut text.
+    assert.deepEqual(result.structuredContent, full);
+    assert.ok(listRepoPrs.outputSchema);
+    if (listRepoPrs.outputSchema) {
+      assert.ok(Value.Check(listRepoPrs.outputSchema, result.structuredContent));
+    }
   } finally {
     await rm(path.dirname(fullPath), { recursive: true, force: true });
   }
@@ -627,4 +639,19 @@ function fail(stderr: string) {
 
 function parseJsonText<T>(text: string | undefined): T {
   return JSON.parse(text ?? "{}") as T;
+}
+
+function assertStructuredContent(
+  tool: RegisteredTool,
+  result: Awaited<ReturnType<RegisteredTool["execute"]>>,
+  textPayload: unknown
+): void {
+  assert.ok(tool.outputSchema, `${tool.name} declares an outputSchema`);
+  assert.deepEqual(result.structuredContent, textPayload);
+  if (tool.outputSchema) {
+    assert.ok(
+      Value.Check(tool.outputSchema, result.structuredContent),
+      `${tool.name} structuredContent matches its outputSchema`
+    );
+  }
 }

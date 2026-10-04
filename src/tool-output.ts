@@ -1,7 +1,9 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { formatSize, truncateHead } from "@earendil-works/pi-coding-agent";
+import { type AgentToolResult, formatSize, truncateHead } from "@earendil-works/pi-coding-agent";
+
+type StructuredContent = NonNullable<AgentToolResult<unknown>["structuredContent"]>;
 
 /**
  * Serialize a tool payload for the model, cut to pi's default tool output
@@ -25,4 +27,12 @@ export async function formatToolJson(payload: unknown, name: string): Promise<st
       `(${formatSize(truncation.outputBytes)} of ${formatSize(truncation.totalBytes)}). ` +
       `Full JSON: ${fullPath}]`,
   ].join("\n");
+}
+
+/**
+ * The full payload as a JSON value for `structuredContent`, never truncated.
+ * Serializing drops undefined fields the same way the text output does.
+ */
+export function toStructuredContent(payload: unknown): StructuredContent {
+  return JSON.parse(JSON.stringify(payload)) as StructuredContent;
 }
