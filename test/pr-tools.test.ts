@@ -8,6 +8,7 @@ import prCompanionExtension from "../src/index.js";
 
 interface RegisteredTool {
   name: string;
+  executionMode?: string;
   execute: (
     toolCallId: string,
     params: unknown,
@@ -493,6 +494,24 @@ void test("switch_pr_branch uses the shared switch path and blocks on dirty work
   );
   assert.match(result.content[0]?.text ?? "", /Dirty worktree/i);
   assert.equal(result.isError, true, "failed switches must be reported as tool errors");
+});
+
+void test("switch_pr_branch runs its tool batch sequentially; read-only tools stay parallel", () => {
+  const tools = new Map<string, RegisteredTool>();
+  const pi = {
+    on: () => undefined,
+    registerCommand: () => undefined,
+    registerTool: (tool: RegisteredTool) => {
+      tools.set(tool.name, tool);
+    },
+  } as unknown as ExtensionAPI;
+
+  prCompanionExtension(pi);
+  // pi runs a whole batch sequentially when any tool in it asks for it, so
+  // read/edit/bash calls never run while the checkout rewrites the worktree.
+  assert.equal(tools.get("switch_pr_branch")?.executionMode, "sequential");
+  assert.equal(tools.get("get_pr_context")?.executionMode, undefined);
+  assert.equal(tools.get("list_repo_prs")?.executionMode, undefined);
 });
 
 void test("get_pr_context forwards its abort signal and stops once cancelled", async () => {

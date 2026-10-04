@@ -260,6 +260,9 @@ function registerTools(pi: ExtensionAPI): void {
     ],
     parameters: SWITCH_PR_SCHEMA,
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    // Switching rewrites the worktree, so sibling tool calls (read, edit, bash)
+    // from the same assistant message must not run during the checkout.
+    executionMode: "sequential",
     execute: async (_toolCallId, params, signal, _onUpdate, ctx) => {
       const exec = bindAbortSignal(pi, signal);
       const cwd = resolveToolCwd(ctx.cwd, params.cwd);
