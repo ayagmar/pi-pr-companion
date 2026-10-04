@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { REVIEW_SESSION_ANCHOR_TYPE } from "../src/constants.js";
 import prCompanionExtension from "../src/index.js";
+import { startReviewSession } from "../src/review-session.js";
 
 interface RegisteredCommand {
   handler: (args: string, ctx: ReviewCommandContext) => Promise<void>;
@@ -21,6 +23,7 @@ interface ReviewCommandContext {
     getBranch: () => SessionEntry[];
     getEntries: () => SessionEntry[];
     getLeafId: () => string | undefined;
+    getLeafEntry?: () => SessionEntry | undefined;
   };
   navigateTree: (
     targetId: string,
@@ -37,10 +40,13 @@ interface SessionEntry {
   type: string;
   customType?: string;
   data?: unknown;
+  message?: { role: string };
 }
 
 void test("review session stores an origin and end-review returns with a summary", async () => {
-  const entries: SessionEntry[] = [{ id: "leaf-1", type: "message" }];
+  const entries: SessionEntry[] = [
+    { id: "leaf-1", type: "message", message: { role: "assistant" } },
+  ];
   const sentMessages: { message: string; options?: unknown }[] = [];
   const navigations: {
     targetId: string;
@@ -148,6 +154,7 @@ void test("review session stores an origin and end-review returns with a summary
       getBranch: () => entries,
       getEntries: () => entries,
       getLeafId: () => leafId,
+      getLeafEntry: () => entries.find((entry) => entry.id === leafId),
     },
     navigateTree: (targetId, options) => {
       navigations.push({ targetId, options });
@@ -387,6 +394,52 @@ void test("end-review supports explicit PR comment drafting", async () => {
     notifications[notifications.length - 1]?.message ?? "",
     /Ended review session with PR review comments/
   );
+});
+
+function startSessionOnLeaf(leaf: SessionEntry): { originId?: string; appended: string[] } {
+  const entries: SessionEntry[] = [leaf];
+  let leafId = leaf.id;
+  const appended: string[] = [];
+  const pi = {
+    appendEntry: (customType: string, data: unknown) => {
+      appended.push(customType);
+      leafId = `entry-${entries.length + 1}`;
+      entries.push({ id: leafId, type: "custom", customType, data });
+    },
+  } as unknown as ExtensionAPI;
+  const ctx = {
+    hasUI: false,
+    sessionManager: {
+      getLeafId: () => leafId,
+      getLeafEntry: () => entries.find((entry) => entry.id === leafId),
+    },
+  } as unknown as ExtensionContext;
+
+  const state = startReviewSession(pi, ctx, { active: true, startedAt: "2026-03-20T10:00:00Z" });
+  return state?.originId ? { originId: state.originId, appended } : { appended };
+}
+
+void test("review session anchors its origin when the leaf is a user or custom message", () => {
+  // navigateTree to these entries moves their text into the editor and drops
+  // them from the branch, so end-review must return to an anchor instead.
+  for (const leaf of [
+    { id: "user-1", type: "message", message: { role: "user" } },
+    { id: "custom-1", type: "custom_message", customType: "other-extension" },
+  ]) {
+    const { originId, appended } = startSessionOnLeaf(leaf);
+    assert.equal(appended[0], REVIEW_SESSION_ANCHOR_TYPE, `${leaf.id} gets an anchor`);
+    assert.equal(originId, "entry-2", `${leaf.id} returns to the anchor`);
+  }
+});
+
+void test("review session uses an assistant leaf as its origin without an anchor", () => {
+  const { originId, appended } = startSessionOnLeaf({
+    id: "assistant-1",
+    type: "message",
+    message: { role: "assistant" },
+  });
+  assert.equal(originId, "assistant-1");
+  assert.ok(!appended.includes(REVIEW_SESSION_ANCHOR_TYPE));
 });
 
 function ok(stdout: string) {
