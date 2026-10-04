@@ -1,3 +1,8 @@
+import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+
+/** The part of the extension API that runs git, gh and glab. */
+export type ExecApi = Pick<ExtensionAPI, "exec">;
+
 export type ProviderKind = "gitlab" | "github";
 export type StatusBarStyle = "minimal" | "diff-prefix" | "diff-suffix";
 export type PrCheckStatus = "success" | "failure" | "pending" | "none";

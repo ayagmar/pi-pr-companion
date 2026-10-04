@@ -1,5 +1,5 @@
-import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { AUTH_ERROR_PATTERNS } from "../constants.js";
+import { type ExecApi } from "../types.js";
 
 /** Upper bound for a single gh/glab call, so a stalled network call cannot hang the UI. */
 export const CLI_TIMEOUT_MS = 60_000;
@@ -15,7 +15,7 @@ export interface CliResult {
  * `killed: true` and exit code 0, so a timeout is turned into a failure here.
  */
 export async function runCli(
-  pi: Pick<ExtensionAPI, "exec">,
+  pi: ExecApi,
   command: "gh" | "glab",
   args: string[]
 ): Promise<CliResult> {

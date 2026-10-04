@@ -1,5 +1,5 @@
-import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
+  type ExecApi,
   type PrLookupResult,
   type ProviderConfig,
   type PrRefReference,
@@ -10,24 +10,24 @@ import {
 
 export interface ProviderAdapter {
   getPrByBranch(
-    pi: ExtensionAPI,
+    pi: ExecApi,
     repo: RepoContext,
     provider: ProviderConfig,
     branch: string
   ): Promise<PrLookupResult>;
   getPrByRef(
-    pi: ExtensionAPI,
+    pi: ExecApi,
     repo: RepoContext,
     provider: ProviderConfig,
     reference: PrRefReference
   ): Promise<PrLookupResult>;
   getPrByUrl(
-    pi: ExtensionAPI,
+    pi: ExecApi,
     provider: ProviderConfig,
     reference: PrUrlReference
   ): Promise<PrLookupResult>;
   listRepoActivePrs(
-    pi: ExtensionAPI,
+    pi: ExecApi,
     repo: RepoContext,
     provider: ProviderConfig
   ): Promise<PrSummary[] | PrLookupResult>;

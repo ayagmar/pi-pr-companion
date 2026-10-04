@@ -1,11 +1,15 @@
 import path from "node:path";
-import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { type ParsedGitRemote, type RepoContext, type RepoDiffStats } from "./types.js";
+import {
+  type ExecApi,
+  type ParsedGitRemote,
+  type RepoContext,
+  type RepoDiffStats,
+} from "./types.js";
 
 const DEFAULT_REMOTE_NAME = "origin";
 
 export async function resolveRepoContext(
-  pi: ExtensionAPI,
+  pi: ExecApi,
   cwd: string
 ): Promise<RepoContext | undefined> {
   const repoRoot = await runGitString(pi, cwd, ["rev-parse", "--show-toplevel"]);
@@ -32,7 +36,7 @@ export async function resolveRepoContext(
 }
 
 export async function switchToBranch(
-  pi: ExtensionAPI,
+  pi: ExecApi,
   repoRoot: string,
   branch: string,
   options?: { remoteName?: string }
@@ -102,7 +106,7 @@ export async function switchToBranch(
 }
 
 export async function getDiffStats(
-  pi: ExtensionAPI,
+  pi: ExecApi,
   repoRoot: string,
   targetBranch: string,
   options?: { remoteName?: string }
@@ -119,7 +123,7 @@ export async function getDiffStats(
   return undefined;
 }
 
-export async function hasDirtyWorktree(pi: ExtensionAPI, repoRoot: string): Promise<boolean> {
+export async function hasDirtyWorktree(pi: ExecApi, repoRoot: string): Promise<boolean> {
   const result = await pi.exec("git", ["-C", repoRoot, "status", "--porcelain"]);
   return result.code === 0 && result.stdout.trim().length > 0;
 }
@@ -183,7 +187,7 @@ function normalizeSshHost(host: string): string {
 }
 
 async function resolveEffectiveRemote(
-  pi: ExtensionAPI,
+  pi: ExecApi,
   repoRoot: string,
   branch: string
 ): Promise<{ remoteName: string; remoteUrl: string } | undefined> {
@@ -231,7 +235,7 @@ async function resolveEffectiveRemote(
 }
 
 async function trySwitchToTrackedRemoteBranch(
-  pi: ExtensionAPI,
+  pi: ExecApi,
   repoRoot: string,
   branch: string,
   remoteName: string
@@ -248,7 +252,7 @@ async function trySwitchToTrackedRemoteBranch(
 }
 
 async function tryFastForwardBranch(
-  pi: ExtensionAPI,
+  pi: ExecApi,
   repoRoot: string,
   branch: string,
   remoteName: string
@@ -277,7 +281,7 @@ async function tryFastForwardBranch(
 }
 
 async function countFastForwardCommits(
-  pi: ExtensionAPI,
+  pi: ExecApi,
   repoRoot: string,
   branch: string,
   remoteName: string
@@ -298,7 +302,7 @@ async function countFastForwardCommits(
 }
 
 async function fetchRemoteBranch(
-  pi: ExtensionAPI,
+  pi: ExecApi,
   repoRoot: string,
   branch: string,
   remoteName: string
@@ -340,11 +344,7 @@ function parseShortStat(output: string): RepoDiffStats | undefined {
   return { additions, deletions };
 }
 
-async function runGitString(
-  pi: ExtensionAPI,
-  cwd: string,
-  args: string[]
-): Promise<string | undefined> {
+async function runGitString(pi: ExecApi, cwd: string, args: string[]): Promise<string | undefined> {
   const result = await pi.exec("git", ["-C", cwd, ...args]);
   if (result.code !== 0) return undefined;
 
@@ -352,7 +352,7 @@ async function runGitString(
   return value || undefined;
 }
 
-async function runGitLines(pi: ExtensionAPI, cwd: string, args: string[]): Promise<string[]> {
+async function runGitLines(pi: ExecApi, cwd: string, args: string[]): Promise<string[]> {
   const value = await runGitString(pi, cwd, args);
   return value
     ? value
