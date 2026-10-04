@@ -1,4 +1,8 @@
-import { type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
+import {
+  type ExtensionAPI,
+  type ExtensionContext,
+  type SessionEntry,
+} from "@earendil-works/pi-coding-agent";
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import {
   REVIEW_SESSION_ANCHOR_TYPE,
@@ -30,7 +34,7 @@ export function startReviewSession(
   state: Omit<ReviewSessionState, "originId">
 ): ReviewSessionState | undefined {
   let originId = ctx.sessionManager.getLeafId() ?? undefined;
-  if (!originId) {
+  if (!originId || !keepsLeafWhenNavigated(ctx.sessionManager.getLeafEntry())) {
     pi.appendEntry(REVIEW_SESSION_ANCHOR_TYPE, {
       createdAt: new Date().toISOString(),
     });
@@ -45,6 +49,17 @@ export function startReviewSession(
   pi.appendEntry(REVIEW_SESSION_STATE_TYPE, nextState);
   setReviewWidget(ctx, nextState);
   return nextState;
+}
+
+/**
+ * Navigating the tree to a user message or a custom message moves its text
+ * into the editor and leaves the leaf on its parent, so /pr end-review would
+ * drop that entry. Such a leaf gets an anchor entry to return to instead.
+ */
+function keepsLeafWhenNavigated(entry: SessionEntry | undefined): boolean {
+  if (!entry) return false;
+  if (entry.type === "custom_message") return false;
+  return !(entry.type === "message" && entry.message.role === "user");
 }
 
 export function endReviewSession(pi: ExtensionAPI, ctx: ExtensionContext): void {
