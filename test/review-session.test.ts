@@ -198,6 +198,16 @@ void test("review session stores an origin and end-review returns with a summary
     notifications[notifications.length - 1]?.message ?? "",
     /Triggered \/review-pr for #42 \(queued until the current run finishes\)/
   );
+
+  // A review session needs an idle agent: its return point is the current leaf.
+  const entryCount = entries.length;
+  await command.handler("review session #42", ctx);
+  assert.equal(sentMessages.length, 2);
+  assert.equal(entries.length, entryCount);
+  assert.deepEqual(notifications[notifications.length - 1], {
+    message: "Wait for the current run to finish before starting a review session.",
+    level: "warning",
+  });
 });
 
 void test("end-review can return with a structured fix queue", async () => {
