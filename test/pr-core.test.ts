@@ -705,6 +705,29 @@ void test("gitlab severity and status text map to footer states", () => {
     "pending"
   );
 
+  const greenPipeline = { ...withoutPipeline, pipelineStatus: "success" };
+  assert.equal(
+    getGitLabPrSeverity({ ...greenPipeline, draft: true, detailedMergeStatus: "draft_status" }),
+    "pending",
+    "a draft MR with a green pipeline is not shown as ready"
+  );
+  assert.equal(getGitLabPrSeverity({ ...greenPipeline, draft: true }), "pending");
+  for (const detailedMergeStatus of [
+    "not_approved",
+    "discussions_not_resolved",
+    "blocked_status",
+  ]) {
+    assert.equal(
+      getGitLabPrSeverity({ ...greenPipeline, detailedMergeStatus }),
+      "blocked",
+      detailedMergeStatus
+    );
+  }
+  assert.equal(
+    getGitLabPrSeverity({ ...greenPipeline, detailedMergeStatus: "mergeable" }),
+    "success"
+  );
+
   const github = getGitHubPrSeverity({
     iid: 42,
     ref: "#42",

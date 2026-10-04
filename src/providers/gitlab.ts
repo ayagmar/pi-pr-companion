@@ -154,6 +154,8 @@ export function getGitLabPrSeverity(pr: PrDetails): "success" | "pending" | "blo
   if (pipelineStatus === "failure") {
     return "blocked";
   }
+  // A draft is never ready; GitHub's DRAFT merge state also shows as pending.
+  if (pr.draft || mergeStatus === "draft_status") return "pending";
   if (pipelineStatus === "success") return "success";
   // A project without CI has no pipeline; GitLab still reports the MR mergeable.
   if (pipelineStatus === "none" && mergeStatus === "mergeable") return "success";
@@ -431,8 +433,22 @@ function unsupported(provider: ProviderConfig, message: string): PrLookupResult 
   };
 }
 
+// Statuses where GitLab refuses the merge until someone acts, like GitHub's
+// BLOCKED merge state (missing approvals, open threads, blocking rules).
+const BLOCKED_MERGE_STATUSES = new Set([
+  "cannot_be_merged",
+  "not_approved",
+  "requested_changes",
+  "discussions_not_resolved",
+  "blocked_status",
+  "merge_request_blocked",
+  "jira_association_missing",
+]);
+
 function isBlockedMergeStatus(status: string): boolean {
-  return status.includes("rebase") || status.includes("conflict") || status === "cannot_be_merged";
+  return (
+    status.includes("rebase") || status.includes("conflict") || BLOCKED_MERGE_STATUSES.has(status)
+  );
 }
 
 function isPrNotFoundMessage(message: string): boolean {
