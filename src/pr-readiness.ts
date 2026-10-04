@@ -1,4 +1,5 @@
-import { type PrCheckStatus, type PrDetails, type PrReadiness, type PrSummary } from "./types.js";
+import { normalizeCheckStatus } from "./pr-normalize.js";
+import { type PrDetails, type PrReadiness, type PrSummary } from "./types.js";
 
 export function evaluatePrReadiness(pr: PrSummary | PrDetails): PrReadiness {
   const blockers: string[] = [];
@@ -30,7 +31,7 @@ export function evaluatePrReadiness(pr: PrSummary | PrDetails): PrReadiness {
     recommendations.push("Rebase or merge the target branch before merging.");
   }
 
-  const checkStatus = pr.checkSummary?.status ?? summarizeCheckStatus(pr.pipelineStatus);
+  const checkStatus = pr.checkSummary?.status ?? normalizeCheckStatus(pr.pipelineStatus);
   if (checkStatus === "failure") {
     blockers.push("checks");
     recommendations.push("Fix the failing checks before merging.");
@@ -71,29 +72,6 @@ export function evaluatePrReadiness(pr: PrSummary | PrDetails): PrReadiness {
     warnings,
     recommendations,
   };
-}
-
-function summarizeCheckStatus(status: string | undefined): PrCheckStatus {
-  const normalized = status?.trim().toLowerCase();
-  if (!normalized) return "none";
-
-  if (["failure", "failed", "error", "errors", "cancelled", "canceled"].includes(normalized)) {
-    return "failure";
-  }
-
-  if (
-    ["pending", "running", "created", "queued", "in_progress", "requested", "waiting"].includes(
-      normalized
-    )
-  ) {
-    return "pending";
-  }
-
-  if (["success", "successful", "passed", "pass"].includes(normalized)) {
-    return "success";
-  }
-
-  return "pending";
 }
 
 export function getReadinessHint(pr: PrDetails): string | undefined {
